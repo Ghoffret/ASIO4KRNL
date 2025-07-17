@@ -1,0 +1,38 @@
+[Version]
+Signature="$WINDOWS NT$"
+Class=Media
+ClassGuid={4d36e96c-e325-11ce-bfc1-08002be10318}
+Provider=%ProviderName%
+DriverVer=01/01/2025,0.0.1.0
+CatalogFile=ASIOTemplate.cat
+
+[DestinationDirs]
+DefaultDestDir=12
+
+[Manufacturer]
+%MfgName%=Standard,NT$ARCH$
+
+[Standard.NT$ARCH$]
+%ASIODriver.DeviceDesc%=ASIOUSB_Install,USB\VID_1397&PID_0001
+
+[ASIOUSB_Install]
+CopyFiles=Drivers_Dir
+
+[Drivers_Dir]
+ASIOUSB.sys
+
+[ASIOUSB_Install.Services]
+AddService=ASIOUSB,%SPSVCINST_ASSOCSERVICE%,ASIOUSB_Service_Inst
+
+[ASIOUSB_Service_Inst]
+ServiceType=1 ; SERVICE_KERNEL_DRIVER
+StartType=3    ; Manual
+ErrorControl=1
+ServiceBinary=%12%\ASIOUSB.sys
+LoadOrderGroup=Extended Base
+
+[Strings]
+ProviderName="ASIO4KRNL"
+MfgName="Generic"
+ASIODriver.DeviceDesc="ASIO USB Audio Driver"
+
