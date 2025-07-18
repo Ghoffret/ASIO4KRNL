@@ -7,12 +7,16 @@ The code is intentionally simplified and does **not** implement a full audio sta
 ## Building
 
 Ensure you have Visual Studio and the Windows Driver Kit (WDK) installed. Run `setup.bat` from a Developer Command Prompt to build and optionally install the driver.
+To actually install the driver, launch the script as **Administrator** so that `devcon` or `pnputil` can copy the driver package.
 
 ## Files
 
-- `src/driver/Driver.cpp` – main driver source with KMDF event callbacks and placeholder implementations.  
-- `src/driver/Driver.h` – declarations for the driver callbacks and modular functions.  
+- `src/driver/Driver.cpp` – main driver source with KMDF event callbacks and placeholder implementations.
+- `src/driver/Driver.h` – declarations for the driver callbacks and modular functions.
 - `src/driver/ASIOUSB.inf` – minimal INF file for installing the driver.
+- `setup.bat` – builds the project and installs the driver when run as Administrator.
+- `src/driver/ASIOUSB.vcxproj` – Visual Studio project file for the kernel driver.
+- `src/driver/ASIOInterface.cpp` – stub ASIO interface exported by the driver.
 
 This driver is **not** ready for production use but serves as a starting point for further development.
 
