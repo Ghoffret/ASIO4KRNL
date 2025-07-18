@@ -1,0 +1,12 @@
+# Build directories and files
+x64/
+*.obj
+*.pdb
+
+# Visual Studio specific files
+*.vcxproj.user
+ipch/
+
+# Python cache directories
+__pycache__/
+.pytest_cache/
