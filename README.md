@@ -6,7 +6,7 @@ The code is intentionally simplified and does **not** implement a full audio sta
 
 ## Building
 
-The project requires the Windows Driver Kit (WDK) and should be built with Visual Studio. No build scripts are provided in this template.
+Ensure you have Visual Studio and the Windows Driver Kit (WDK) installed. Run `setup.bat` from a Developer Command Prompt to build and optionally install the driver.
 
 ## Files
 
