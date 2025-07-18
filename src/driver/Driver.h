@@ -5,7 +5,7 @@
 #include <wdfusb.h>
 
 extern "C" {
-DRIVER_INITIALIZE DriverEntry;
+    DRIVER_INITIALIZE DriverEntry;
 }
 
 NTSTATUS
@@ -14,9 +14,9 @@ ASIOEvtDeviceAdd(
     _Inout_ PWDFDEVICE_INIT DeviceInit
     );
 
-EVT_WDF_DRIVER_UNLOAD ASIOEvtDriverUnload;
-EVT_WDF_DEVICE_PREPARE_HARDWARE ASIOEvtDevicePrepareHardware;
-EVT_WDF_DEVICE_RELEASE_HARDWARE ASIOEvtDeviceReleaseHardware;
+EVT_WDF_DRIVER_UNLOAD              ASIOEvtDriverUnload;
+EVT_WDF_DEVICE_PREPARE_HARDWARE    ASIOEvtDevicePrepareHardware;
+EVT_WDF_DEVICE_RELEASE_HARDWARE    ASIOEvtDeviceReleaseHardware;
 
 // Placeholder functions for modular functionality
 NTSTATUS EnumerateUsbInterfaces(_In_ WDFDEVICE Device);
@@ -47,13 +47,13 @@ typedef struct _ASIO_BUFFER_CONTEXT {
 } ASIO_BUFFER_CONTEXT, *PASIO_BUFFER_CONTEXT;
 
 NTSTATUS InitBuffers(_In_ WDFDEVICE Device, _Out_ PASIO_BUFFER_CONTEXT Context);
-VOID ReleaseBuffers(_Inout_ PASIO_BUFFER_CONTEXT Context);
+VOID     ReleaseBuffers(_Inout_ PASIO_BUFFER_CONTEXT Context);
 NTSTATUS ProcessAudioBuffer(_Inout_ PASIO_BUFFER_CONTEXT Context);
 
 // Simple ring buffer for audio streaming
 typedef struct _RING_BUFFER {
-    PUCHAR      Buffer;
-    ULONG       Size;
+    PUCHAR        Buffer;
+    ULONG         Size;
     volatile ULONG ReadPos;
     volatile ULONG WritePos;
 } RING_BUFFER, *PRING_BUFFER;
@@ -68,5 +68,3 @@ NTSTATUS InitRingBuffers(_In_ WDFDEVICE Device, _Out_ PSTREAM_CONTEXT Context);
 VOID     ReleaseRingBuffers(_Inout_ PSTREAM_CONTEXT Context);
 
 EVT_WDF_TIMER BufferTimerFunc;
-
-

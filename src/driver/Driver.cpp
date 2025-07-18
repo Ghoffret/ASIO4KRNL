@@ -119,10 +119,10 @@ NTSTATUS EnumerateUsbInterfaces(_In_ WDFDEVICE Device)
 
     usbCtx->StreamInPipe = WdfUsbInterfaceGetConfiguredPipe(usbCtx->AudioInterface,
                                                              0,
-                                                             NULL); // First pipe assumed input
+                                                             NULL);
     usbCtx->StreamOutPipe = WdfUsbInterfaceGetConfiguredPipe(usbCtx->AudioInterface,
                                                              1,
-                                                             NULL); // Second pipe assumed output
+                                                             NULL);
 
     KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_INFO_LEVEL, "ASIO4KRNL: USB interfaces ready\n"));
 
@@ -241,4 +241,3 @@ VOID ReleaseRingBuffers(_Inout_ PSTREAM_CONTEXT Context)
 
     // TODO: free ring buffer memory
 }
-

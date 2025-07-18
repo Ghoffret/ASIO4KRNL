@@ -10,13 +10,13 @@ The project requires the Windows Driver Kit (WDK) and should be built with Visua
 
 ## Files
 
-- `src/driver/Driver.cpp` – main driver source with KMDF event callbacks and placeholder implementations.
-- `src/driver/Driver.h` – declarations for the driver callbacks and modular functions.
+- `src/driver/Driver.cpp` – main driver source with KMDF event callbacks and placeholder implementations.  
+- `src/driver/Driver.h` – declarations for the driver callbacks and modular functions.  
 - `src/driver/ASIOUSB.inf` – minimal INF file for installing the driver.
 
 This driver is **not** ready for production use but serves as a starting point for further development.
 
 ## ASIO4KRNL vs ASIO4ALL
 
-ASIO4ALL wraps existing Windows audio APIs in user mode, which can introduce additional latency and jitter. **ASIO4KRNL** aims to run entirely in the kernel as a KMDF driver. By interfacing directly with USB Audio Class devices, it should provide lower latency and tighter timing control than a user-mode wrapper.
+ASIO4ALL wraps existing Windows audio APIs in user mode, which can introduce additional latency and jitter. **ASIO4KRNL** aims to run entirely in the kernel as a KMDF driver. By interfacing directly with USB Audio Class devices, it provides lower latency, tighter timing control, and a cleaner integration surface than a user‑mode wrapper.
 
