@@ -26,3 +26,10 @@ This driver is **not** ready for production use but serves as a starting point f
 
 ASIO4ALL wraps existing Windows audio APIs in user mode, which can introduce additional latency and jitter. **ASIO4KRNL** aims to run entirely in the kernel as a KMDF driver. By interfacing directly with USB Audio Class devices, it provides lower latency, tighter timing control, and a cleaner integration surface than a user‑mode wrapper.
 
+
+## Configuration GUI and Installer
+
+A lightweight Win32 application located in `src/gui` provides control over the driver settings. It lets you select the input/output devices, choose buffer size and sample rate and toggle the low latency mode. Real‑time status information such as estimated latency and buffer underruns is refreshed every second. The application also exposes a tray icon and a start menu shortcut when installed.
+
+A WiX toolset script in the `installer` folder builds an MSI package that installs the driver, GUI and supporting files. The installer is set up for per‑machine installation and includes a placeholder for driver signing.
+
