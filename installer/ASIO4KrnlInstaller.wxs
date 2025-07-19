@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <Product Id="*" Name="ASIO4Krnl" Language="1033" Version="0.1.0" Manufacturer="ASIO4Krnl" UpgradeCode="{CDE4B0E2-2E5F-4C3F-95C8-1234567890AB}">
+    <Package InstallerVersion="500" Compressed="yes" InstallScope="perMachine"/>
+    <MediaTemplate/>
+
+    <Feature Id="DefaultFeature" Level="1">
+      <ComponentGroupRef Id="AppComponents"/>
+    </Feature>
+  </Product>
+
+  <Fragment>
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="ProgramFilesFolder">
+        <Directory Id="INSTALLDIR" Name="ASIO4Krnl"/>
+      </Directory>
+      <Directory Id="ProgramMenuFolder">
+        <Directory Id="ProgramMenuDir" Name="ASIO4Krnl"/>
+      </Directory>
+    </Directory>
+  </Fragment>
+
+  <Fragment>
+    <ComponentGroup Id="AppComponents" Directory="INSTALLDIR">
+      <Component Id="DriverFiles" Guid="{F4A9F16C-9A61-4F94-9695-E7BA984B1234}">
+        <File Source="..\src\driver\ASIOUSB.sys" />
+        <File Source="..\src\driver\ASIOUSB.inf" />
+      </Component>
+      <Component Id="GuiExe" Guid="{AC91A2B2-8BBA-4C1E-A78B-DF12345C5678}">
+        <File Source="..\bin\Release\ASIO4KrnlGUI.exe"/>
+        <Shortcut Id="StartMenuShortcut" Directory="ProgramMenuDir" Name="ASIO4Krnl Settings" WorkingDirectory="INSTALLDIR" Icon="AppIcon.ico" Advertise="no" />
+      </Component>
+    </ComponentGroup>
+  </Fragment>
+
+  <Fragment>
+    <Icon Id="AppIcon.ico" SourceFile="..\installer\AppIcon.ico"/>
+  </Fragment>
+</Wix>
