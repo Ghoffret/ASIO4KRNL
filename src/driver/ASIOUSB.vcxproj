@@ -44,8 +44,10 @@
 
   <ItemGroup>
     <ClInclude Include="Driver.h" />
+    <ClInclude Include="Log.h" />
     <ClCompile Include="Driver.cpp" />
     <ClCompile Include="ASIOInterface.cpp" />
+    <ClCompile Include="Log.cpp" />
     <Inf Include="ASIOUSB.inf" />
   </ItemGroup>
 

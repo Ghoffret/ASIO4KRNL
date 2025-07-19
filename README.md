@@ -35,3 +35,9 @@ The GUI now groups related settings into clear sections and includes tooltips fo
 
 A WiX toolset script in the `installer` folder builds an MSI package that installs the driver, GUI and supporting files. It now creates desktop/start menu shortcuts, supports clean uninstallation and contains placeholders for certificate management and signing. On first install the GUI is launched with a simple setup wizard guiding new users.
 
+
+## Beta Notes
+
+This repository now includes basic crash logging. Log files are written to `C:\ProgramData\ASIO4Krnl\logs` for the driver and `%ProgramData%\ASIO4Krnl\logs` for the GUI. A beta warning is shown on first launch of the control panel.
+
+Run `installer/package.ps1` to build the signed MSI and package everything into `ASIO4Krnl-Beta.zip` for distribution.

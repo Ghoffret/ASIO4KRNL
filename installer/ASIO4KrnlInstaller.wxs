@@ -37,6 +37,9 @@
         <RemoveFile Id="RemoveDesktopShortcut" On="uninstall" Name="ASIO4Krnl Settings.lnk" Directory="DesktopFolder" />
         <RemoveFile Id="RemoveStartMenuDir" On="uninstall" Name="ASIO4Krnl" Directory="ProgramMenuFolder" />
       </Component>
+      <Component Id="Readme" Guid="{C1234567-89AB-4AF8-B012-DEF123456789}">
+        <File Source="README.txt" KeyPath="yes"/>
+      </Component>
     </ComponentGroup>
     <CustomAction Id="LaunchWizard" FileKey="GuiExe" ExeCommand="/wizard" Execute="deferred" Return="check" />
     <InstallExecuteSequence>

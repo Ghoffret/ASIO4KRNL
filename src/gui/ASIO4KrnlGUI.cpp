@@ -2,10 +2,13 @@
 #include <commctrl.h>
 #include <shellapi.h>
 #include <mmsystem.h>
+#include <shlobj.h>
 #include <string>
+#include "../common/Version.h"
 
 #pragma comment(lib, "comctl32.lib")
 #pragma comment(lib, "winmm.lib")
+#pragma comment(lib, "shell32.lib")
 
 #pragma comment(lib, "comctl32.lib")
 
@@ -25,6 +28,20 @@ struct AppState {
 };
 
 static AppState g_state{};
+
+static void LogGui(const wchar_t* msg)
+{
+    wchar_t path[MAX_PATH];
+    if (SHGetFolderPathW(NULL, CSIDL_COMMON_APPDATA, NULL, SHGFP_TYPE_CURRENT, path) == S_OK) {
+        wcscat_s(path, L"\\ASIO4Krnl\\logs\\gui.log");
+        HANDLE h = CreateFileW(path, FILE_APPEND_DATA, FILE_SHARE_READ, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+        if (h != INVALID_HANDLE_VALUE) {
+            DWORD written;
+            WriteFile(h, msg, (DWORD)(wcslen(msg) * sizeof(wchar_t)), &written, NULL);
+            CloseHandle(h);
+        }
+    }
+}
 
 // Forward declarations
 LRESULT CALLBACK MainWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
@@ -52,7 +69,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     wc.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1);
     RegisterClassEx(&wc);
 
-    HWND hwnd = CreateWindowEx(0, wc.lpszClassName, L"ASIO4Krnl Settings",
+    HWND hwnd = CreateWindowEx(0, wc.lpszClassName, L"ASIO4Krnl Settings (Beta)",
                                WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT,
                                450, 300, nullptr, nullptr, hInstance, nullptr);
     if (!hwnd)
@@ -65,8 +82,12 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                                          nullptr);
     g_state.statusColor = RGB(0, 128, 0);
 
+    std::wstring title = std::wstring(L"ASIO4Krnl Settings (Beta) - v") + ASIO4KRNL_VERSION;
+    SetWindowText(hwnd, title.c_str());
     ShowWindow(hwnd, nCmdShow);
     UpdateWindow(hwnd);
+    MessageBox(hwnd, L"Beta software \x2013 use at your own risk.", L"ASIO4Krnl Beta", MB_ICONWARNING | MB_OK);
+    LogGui(L"GUI started\n");
 
     ShowWizardIfRequested(lpCmdLine, hwnd);
 
@@ -86,7 +107,7 @@ static void AddTrayIcon(HWND hwnd)
     g_state.nid.uFlags           = NIF_MESSAGE | NIF_ICON | NIF_TIP;
     g_state.nid.uCallbackMessage = WM_USER + 1;
     g_state.nid.hIcon            = LoadIcon(nullptr, IDI_APPLICATION);
-    wcscpy_s(g_state.nid.szTip, L"ASIO4Krnl Settings");
+    wcscpy_s(g_state.nid.szTip, L"ASIO4Krnl Settings (Beta)");
     Shell_NotifyIcon(NIM_ADD, &g_state.nid);
 }
 
@@ -198,7 +219,8 @@ static void PopulateControls(HWND hwnd)
                    340, 76, 90, 24, hwnd, (HMENU)106, nullptr, nullptr);
 
     // Status area
-    CreateWindowEx(WS_EX_CLIENTEDGE, WC_STATIC, L"Latency: 0ms\nUnderruns: 0\nDriver: OK",
+    std::wstring initStatus = std::wstring(L"Latency: 0ms\nUnderruns: 0\nDriver: v") + ASIO4KRNL_VERSION;
+    CreateWindowEx(WS_EX_CLIENTEDGE, WC_STATIC, initStatus.c_str(),
                    WS_CHILD | WS_VISIBLE | SS_LEFT,
                    20, 116, 410, 60, hwnd, (HMENU)105, nullptr, nullptr);
     g_state.hwndStatus = GetDlgItem(hwnd, 105);
@@ -269,6 +291,7 @@ LRESULT CALLBACK MainWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
     case WM_DESTROY:
         KillTimer(hWnd, g_state.timerId);
         RemoveTrayIcon();
+        LogGui(L"GUI exited\n");
         PostQuitMessage(0);
         break;
     default:
@@ -281,7 +304,7 @@ void UpdateStatus()
 {
     // In a real app, query driver for status
     static int counter = 0;
-    std::wstring text = L"Latency: 10ms\nUnderruns: " + std::to_wstring(counter++) + L"\nDriver: OK";
+    std::wstring text = L"Latency: 10ms\nUnderruns: " + std::to_wstring(counter++) + L"\nDriver: v" + ASIO4KRNL_VERSION;
     SetWindowText(g_state.hwndStatus, text.c_str());
     g_state.statusColor = counter > 0 ? RGB(200,0,0) : RGB(0,128,0);
     InvalidateRect(g_state.hwndStatus, NULL, TRUE);

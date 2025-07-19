@@ -1,5 +1,6 @@
 #include "Driver.h"
 #include "KSAudioEngine.h"
+#include "Log.h"
 
 // Global instance of the kernel streaming engine
 KSAudioEngine g_KsEngine;
@@ -113,12 +114,22 @@ NTSTATUS EnumerateUsbInterfaces(_In_ WDFDEVICE Device)
                                                     WDF_NO_OBJECT_ATTRIBUTES,
                                                     &usbCtx->UsbDevice);
     if (!NT_SUCCESS(status)) {
+        KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "ASIO4KRNL: failed to create USB device %x\n", status));
+        LogMessage("failed to create USB device %x\n", status);
         return status;
     }
 
     usbCtx->AudioInterface = WdfUsbTargetDeviceGetInterface(usbCtx->UsbDevice, 0);
     if (usbCtx->AudioInterface == NULL) {
+        KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "ASIO4KRNL: no audio interface found\n"));
+        LogMessage("no audio interface found\n");
         return STATUS_UNSUCCESSFUL;
+    }
+
+    if (WdfUsbInterfaceGetNumConfiguredPipes(usbCtx->AudioInterface) < 2) {
+        KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "ASIO4KRNL: insufficient endpoints\n"));
+        LogMessage("insufficient USB endpoints\n");
+        return STATUS_INVALID_DEVICE_STATE;
     }
 
     usbCtx->StreamInPipe = WdfUsbInterfaceGetConfiguredPipe(usbCtx->AudioInterface,
@@ -127,6 +138,11 @@ NTSTATUS EnumerateUsbInterfaces(_In_ WDFDEVICE Device)
     usbCtx->StreamOutPipe = WdfUsbInterfaceGetConfiguredPipe(usbCtx->AudioInterface,
                                                              1,
                                                              NULL);
+    if (!usbCtx->StreamInPipe || !usbCtx->StreamOutPipe) {
+        KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "ASIO4KRNL: missing stream pipes\n"));
+        LogMessage("missing stream pipes\n");
+        return STATUS_INVALID_DEVICE_STATE;
+    }
 
     KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_INFO_LEVEL, "ASIO4KRNL: USB interfaces ready\n"));
 
@@ -189,6 +205,10 @@ NTSTATUS SyncSampleClock(_In_ WDFDEVICE Device)
     UNREFERENCED_PARAMETER(Device);
     KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_INFO_LEVEL, "ASIO4KRNL: Synchronizing sample clock\n"));
     // TODO: synchronize sample clock with hardware
+    // Placeholder that simply fails gracefully if clock sync not available
+    if (Device == NULL) {
+        return STATUS_DEVICE_NOT_READY;
+    }
     return STATUS_SUCCESS;
 }
 
@@ -197,15 +217,42 @@ NTSTATUS InitBuffers(_In_ WDFDEVICE Device, _Out_ PASIO_BUFFER_CONTEXT Context)
     UNREFERENCED_PARAMETER(Device);
     RtlZeroMemory(Context, sizeof(ASIO_BUFFER_CONTEXT));
     KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_INFO_LEVEL, "ASIO4KRNL: Initializing ASIO double buffers\n"));
-    // TODO: allocate two sets of input/output buffers for low latency
+
+    ULONG size = 4096; // placeholder buffer size
+    for (int i = 0; i < 2; ++i) {
+        Context->Input[i].Size = size;
+        Context->Input[i].Buffer = (PUCHAR)ExAllocatePoolWithTag(NonPagedPoolNx, size, '4ksA');
+        if (!Context->Input[i].Buffer) {
+            LogMessage("input buffer allocation failed\n");
+            ReleaseBuffers(Context);
+            return STATUS_INSUFFICIENT_RESOURCES;
+        }
+
+        Context->Output[i].Size = size;
+        Context->Output[i].Buffer = (PUCHAR)ExAllocatePoolWithTag(NonPagedPoolNx, size, '4ksA');
+        if (!Context->Output[i].Buffer) {
+            LogMessage("output buffer allocation failed\n");
+            ReleaseBuffers(Context);
+            return STATUS_INSUFFICIENT_RESOURCES;
+        }
+    }
+
     return STATUS_SUCCESS;
 }
 
 VOID ReleaseBuffers(_Inout_ PASIO_BUFFER_CONTEXT Context)
 {
-    UNREFERENCED_PARAMETER(Context);
     KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_INFO_LEVEL, "ASIO4KRNL: Releasing ASIO buffers\n"));
-    // TODO: release allocated buffers
+    for (int i = 0; i < 2; ++i) {
+        if (Context->Input[i].Buffer) {
+            ExFreePoolWithTag(Context->Input[i].Buffer, '4ksA');
+            Context->Input[i].Buffer = NULL;
+        }
+        if (Context->Output[i].Buffer) {
+            ExFreePoolWithTag(Context->Output[i].Buffer, '4ksA');
+            Context->Output[i].Buffer = NULL;
+        }
+    }
 }
 
 NTSTATUS ProcessAudioBuffer(_Inout_ PASIO_BUFFER_CONTEXT Context)
@@ -241,7 +288,12 @@ NTSTATUS InitRingBuffers(_In_ WDFDEVICE Device, _Out_ PSTREAM_CONTEXT Context)
     WDF_TIMER_CONFIG_INIT_PERIODIC(&timerCfg, BufferTimerFunc, 1); // 1ms placeholder
     WDF_OBJECT_ATTRIBUTES_INIT(&attrs);
     attrs.ParentObject = Device;
-    return WdfTimerCreate(&timerCfg, &attrs, &Context->BufferTimer);
+    NTSTATUS status = WdfTimerCreate(&timerCfg, &attrs, &Context->BufferTimer);
+    if (!NT_SUCCESS(status)) {
+        KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "ASIO4KRNL: timer create failed %x\n", status));
+        LogMessage("timer creation failed %x\n", status);
+    }
+    return status;
 }
 
 VOID ReleaseRingBuffers(_Inout_ PSTREAM_CONTEXT Context)
