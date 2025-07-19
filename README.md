@@ -29,7 +29,9 @@ ASIO4ALL wraps existing Windows audio APIs in user mode, which can introduce add
 
 ## Configuration GUI and Installer
 
-A lightweight Win32 application located in `src/gui` provides control over the driver settings. It lets you select the input/output devices, choose buffer size and sample rate and toggle the low latency mode. Real‑time status information such as estimated latency and buffer underruns is refreshed every second. The application also exposes a tray icon and a start menu shortcut when installed.
+A lightweight Win32 application located in `src/gui` provides control over the driver settings. It lets you select the input/output devices, choose buffer size and sample rate and toggle the low latency mode. Real‑time status information such as estimated latency and buffer underruns is refreshed every second. The application also exposes a tray icon and a start menu shortcut when installed. When no compatible device is found, the GUI warns the user and disables the selection boxes.
 
-A WiX toolset script in the `installer` folder builds an MSI package that installs the driver, GUI and supporting files. The installer is set up for per‑machine installation and includes a placeholder for driver signing.
+The GUI now groups related settings into clear sections and includes tooltips for every control. A "Restore Defaults" button resets the configuration. The tray icon menu allows quick toggling of low‑latency mode or reopening the window.
+
+A WiX toolset script in the `installer` folder builds an MSI package that installs the driver, GUI and supporting files. It now creates desktop/start menu shortcuts, supports clean uninstallation and contains placeholders for certificate management and signing. On first install the GUI is launched with a simple setup wizard guiding new users.
 
