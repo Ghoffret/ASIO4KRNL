@@ -3,6 +3,13 @@ setlocal
 
 rem Build and optionally install the ASIO4KRNL driver.
 
+net session >nul 2>&1 :: check if admin if not exit
+if %errorlevel% neq 0 (
+    echo This script must be run as Administrator.
+    pause
+    exit /b
+)
+
 rem Locate msbuild.exe
 for /f "delims=" %%I in ('where msbuild.exe 2^>nul') do set MSBUILD=%%I
 if not defined MSBUILD (
