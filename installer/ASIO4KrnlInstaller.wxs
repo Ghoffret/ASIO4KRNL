@@ -2,6 +2,8 @@
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
   <Product Id="*" Name="ASIO4Krnl" Language="1033" Version="0.1.0" Manufacturer="ASIO4Krnl" UpgradeCode="{CDE4B0E2-2E5F-4C3F-95C8-1234567890AB}">
     <Package InstallerVersion="500" Compressed="yes" InstallScope="perMachine"/>
+    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+    <Condition Message="Administrator privileges required.">Installed OR Privileged</Condition>
     <MediaTemplate/>
 
     <Feature Id="DefaultFeature" Level="1">
@@ -17,6 +19,7 @@
       <Directory Id="ProgramMenuFolder">
         <Directory Id="ProgramMenuDir" Name="ASIO4Krnl"/>
       </Directory>
+      <Directory Id="DesktopFolder" />
     </Directory>
   </Fragment>
 
@@ -25,15 +28,26 @@
       <Component Id="DriverFiles" Guid="{F4A9F16C-9A61-4F94-9695-E7BA984B1234}">
         <File Source="..\src\driver\ASIOUSB.sys" />
         <File Source="..\src\driver\ASIOUSB.inf" />
+        <RemoveFile Id="DriverInf" Name="ASIOUSB.inf" On="uninstall" />
       </Component>
       <Component Id="GuiExe" Guid="{AC91A2B2-8BBA-4C1E-A78B-DF12345C5678}">
         <File Source="..\bin\Release\ASIO4KrnlGUI.exe"/>
         <Shortcut Id="StartMenuShortcut" Directory="ProgramMenuDir" Name="ASIO4Krnl Settings" WorkingDirectory="INSTALLDIR" Icon="AppIcon.ico" Advertise="no" />
+        <Shortcut Id="DesktopShortcut" Directory="DesktopFolder" Name="ASIO4Krnl Settings" WorkingDirectory="INSTALLDIR" Icon="AppIcon.ico" Advertise="no" />
+        <RemoveFile Id="RemoveDesktopShortcut" On="uninstall" Name="ASIO4Krnl Settings.lnk" Directory="DesktopFolder" />
+        <RemoveFile Id="RemoveStartMenuDir" On="uninstall" Name="ASIO4Krnl" Directory="ProgramMenuFolder" />
       </Component>
     </ComponentGroup>
+    <CustomAction Id="LaunchWizard" FileKey="GuiExe" ExeCommand="/wizard" Execute="deferred" Return="check" />
+    <InstallExecuteSequence>
+      <Custom Action="LaunchWizard" After="InstallFinalize">NOT Installed</Custom>
+    </InstallExecuteSequence>
   </Fragment>
 
   <Fragment>
     <Icon Id="AppIcon.ico" SourceFile="..\installer\AppIcon.ico"/>
+    <!-- TODO: Insert CertMgr and SignTool commands here for driver signing -->
+    <Property Id="SIGNTOOL" Value="$(var.SignToolPath)"/>
+    <Property Id="CERTMGR" Value="$(var.CertMgrPath)"/>
   </Fragment>
 </Wix>
