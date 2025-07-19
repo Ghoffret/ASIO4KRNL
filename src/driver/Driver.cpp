@@ -1,4 +1,8 @@
 #include "Driver.h"
+#include "KSAudioEngine.h"
+
+// Global instance of the kernel streaming engine
+KSAudioEngine g_KsEngine;
 
 extern "C" NTSTATUS
 DriverEntry(
@@ -163,7 +167,16 @@ NTSTATUS SetupAsioBuffers(_In_ WDFDEVICE Device)
         return status;
     }
 
+    // Initialize kernel streaming engine with default parameters
+    status = g_KsEngine.Initialize(Device, 48000, 2, 256);
+    if (NT_SUCCESS(status)) {
+        status = g_KsEngine.Start();
+    }
+
     status = ProcessAudioBuffer(&bufferCtx);
+
+    g_KsEngine.Stop();
+    g_KsEngine.Shutdown();
 
     ReleaseRingBuffers(&streamCtx);
     ReleaseBuffers(&bufferCtx);
@@ -211,6 +224,7 @@ BufferTimerFunc(
     UNREFERENCED_PARAMETER(Timer);
     KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_INFO_LEVEL, "ASIO4KRNL: Buffer timer fired\n"));
     // TODO: move data between ring buffer and USB pipes here
+    g_KsEngine.LogUnderrun();
 }
 
 NTSTATUS InitRingBuffers(_In_ WDFDEVICE Device, _Out_ PSTREAM_CONTEXT Context)
