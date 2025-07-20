@@ -2,6 +2,8 @@
 
 This repository contains a minimal skeleton of a KMDF-based audio driver for Windows. The goal is to create a native kernel driver that exposes an ASIO-compatible interface for low-latency audio using USB Audio Class devices (such as the Behringer UMC22/UM2).
 
+This project was made with the help of **CODEX**.
+
 The code is intentionally simplified and does **not** implement a full audio stack. It provides placeholders for key functionality including USB interface enumeration, stream format negotiation, ASIO buffer management and sample clock synchronisation. The newly added **KSAudioEngine** class demonstrates a clean approach to interfacing directly with the Windows Kernel Streaming subsystem without relying on ASIO4ALL-style wrappers.
 
 ## Building
