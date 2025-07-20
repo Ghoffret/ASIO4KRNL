@@ -38,6 +38,10 @@ A WiX toolset script in the `installer` folder builds an MSI package that instal
 
 ## Beta Notes
 
-This repository now includes basic crash logging. Log files are written to `C:\ProgramData\ASIO4Krnl\logs` for the driver and `%ProgramData%\ASIO4Krnl\logs` for the GUI. A beta warning is shown on first launch of the control panel.
+Version 0.2.0 introduces functional ring buffer allocation and a simple ping‑pong
+buffer processor. Crash logging remains enabled. Log files are written to
+`C:\ProgramData\ASIO4Krnl\logs` for the driver and `%ProgramData%\ASIO4Krnl\logs`
+for the GUI. A beta warning is shown on first launch of the control panel.
 
-Run `installer/package.ps1` to build the signed MSI and package everything into `ASIO4Krnl-Beta.zip` for distribution.
+Run `installer/package.ps1` to build the signed MSI and package everything into
+`ASIO4Krnl-Beta.zip` for distribution.

@@ -257,9 +257,15 @@ VOID ReleaseBuffers(_Inout_ PASIO_BUFFER_CONTEXT Context)
 
 NTSTATUS ProcessAudioBuffer(_Inout_ PASIO_BUFFER_CONTEXT Context)
 {
-    UNREFERENCED_PARAMETER(Context);
-    KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_INFO_LEVEL, "ASIO4KRNL: Processing ASIO buffer index %lu\n", Context->CurrentIndex));
-    // TODO: handle audio transfer and switch buffer index
+    if (!Context)
+        return STATUS_INVALID_PARAMETER;
+
+    KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_INFO_LEVEL,
+               "ASIO4KRNL: Processing ASIO buffer index %lu\n",
+               Context->CurrentIndex));
+
+    // Simple ping‑pong of the active buffer index
+    Context->CurrentIndex ^= 1;
     return STATUS_SUCCESS;
 }
 
@@ -281,7 +287,29 @@ NTSTATUS InitRingBuffers(_In_ WDFDEVICE Device, _Out_ PSTREAM_CONTEXT Context)
 
     KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_INFO_LEVEL, "ASIO4KRNL: Initializing ring buffers\n"));
 
-    // TODO: allocate ring buffers with appropriate size for low latency streaming
+    // Allocate simple ring buffers for beta testing
+    ULONG rbSize = 16384; // 16kB per ring
+    Context->InputRing.Buffer = (PUCHAR)ExAllocatePoolWithTag(NonPagedPoolNx,
+                                                              rbSize,
+                                                              '4ksR');
+    Context->OutputRing.Buffer = (PUCHAR)ExAllocatePoolWithTag(NonPagedPoolNx,
+                                                               rbSize,
+                                                               '4ksR');
+    if (!Context->InputRing.Buffer || !Context->OutputRing.Buffer) {
+        if (Context->InputRing.Buffer) {
+            ExFreePoolWithTag(Context->InputRing.Buffer, '4ksR');
+            Context->InputRing.Buffer = NULL;
+        }
+        if (Context->OutputRing.Buffer) {
+            ExFreePoolWithTag(Context->OutputRing.Buffer, '4ksR');
+            Context->OutputRing.Buffer = NULL;
+        }
+        return STATUS_INSUFFICIENT_RESOURCES;
+    }
+    Context->InputRing.Size  = rbSize;
+    Context->OutputRing.Size = rbSize;
+    Context->InputRing.ReadPos = Context->InputRing.WritePos = 0;
+    Context->OutputRing.ReadPos = Context->OutputRing.WritePos = 0;
 
     WDF_TIMER_CONFIG timerCfg;
     WDF_OBJECT_ATTRIBUTES attrs;
@@ -305,5 +333,12 @@ VOID ReleaseRingBuffers(_Inout_ PSTREAM_CONTEXT Context)
         Context->BufferTimer = NULL;
     }
 
-    // TODO: free ring buffer memory
+    if (Context->InputRing.Buffer) {
+        ExFreePoolWithTag(Context->InputRing.Buffer, '4ksR');
+        Context->InputRing.Buffer = NULL;
+    }
+    if (Context->OutputRing.Buffer) {
+        ExFreePoolWithTag(Context->OutputRing.Buffer, '4ksR');
+        Context->OutputRing.Buffer = NULL;
+    }
 }
