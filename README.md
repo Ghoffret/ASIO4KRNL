@@ -1,4 +1,5 @@
 # ASIO4KRNL
+<img width="256" height="256" alt="AppIcon" src="https://github.com/user-attachments/assets/32ef8148-e104-4604-a97b-7c51cb1a4b2d" />
 
 This repository contains a minimal skeleton of a KMDF-based audio driver for Windows. The goal is to create a native kernel driver that exposes an ASIO-compatible interface for low-latency audio using USB Audio Class devices (such as the Behringer UMC22/UM2).
 
