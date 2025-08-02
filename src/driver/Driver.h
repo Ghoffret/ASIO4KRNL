@@ -4,6 +4,30 @@
 #include <wdf.h>
 #include <wdfusb.h>
 
+// Performance and buffer size constants (power of 2 for efficient operations)
+#define ASIO_BUFFER_SIZE_BYTES      4096   // 4KB
+#define RING_BUFFER_SIZE_BYTES      16384  // 16KB (power of 2)
+#define RING_BUFFER_SIZE_MASK       (RING_BUFFER_SIZE_BYTES - 1)  // For efficient modulo
+#define BUFFER_TIMER_PERIOD_MS      1
+#define DEFAULT_SAMPLE_RATE         48000
+#define DEFAULT_CHANNEL_COUNT       2
+#define DEFAULT_BUFFER_FRAMES       256
+
+// Pool tags for memory allocation tracking
+#define TAG_ASIO_BUFFER    '4ksA'
+#define TAG_RING_BUFFER    '4ksR'
+
+// Performance optimization macros
+#define ASIO4KRNL_INLINE __forceinline
+#define ASIO4KRNL_LIKELY(x) (x)
+#define ASIO4KRNL_UNLIKELY(x) (x)
+
+// Optimized logging macros
+#define ASIO4KRNL_LOG_INFO(fmt, ...) \
+    KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_INFO_LEVEL, "ASIO4KRNL: " fmt, __VA_ARGS__))
+#define ASIO4KRNL_LOG_ERROR(fmt, ...) \
+    KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "ASIO4KRNL: " fmt, __VA_ARGS__))
+
 extern "C" {
     DRIVER_INITIALIZE DriverEntry;
 }
@@ -48,7 +72,7 @@ typedef struct _ASIO_BUFFER_CONTEXT {
 
 NTSTATUS InitBuffers(_In_ WDFDEVICE Device, _Out_ PASIO_BUFFER_CONTEXT Context);
 VOID     ReleaseBuffers(_Inout_ PASIO_BUFFER_CONTEXT Context);
-NTSTATUS ProcessAudioBuffer(_Inout_ PASIO_BUFFER_CONTEXT Context);
+ASIO4KRNL_INLINE NTSTATUS ProcessAudioBuffer(_Inout_ PASIO_BUFFER_CONTEXT Context);
 
 // Simple ring buffer for audio streaming
 typedef struct _RING_BUFFER {
@@ -66,5 +90,11 @@ typedef struct _STREAM_CONTEXT {
 
 NTSTATUS InitRingBuffers(_In_ WDFDEVICE Device, _Out_ PSTREAM_CONTEXT Context);
 VOID     ReleaseRingBuffers(_Inout_ PSTREAM_CONTEXT Context);
+
+// Optimized ring buffer operations
+ASIO4KRNL_INLINE ULONG RingBufferAvailableRead(_In_ PRING_BUFFER Ring);
+ASIO4KRNL_INLINE ULONG RingBufferAvailableWrite(_In_ PRING_BUFFER Ring);
+ASIO4KRNL_INLINE VOID RingBufferAdvanceWrite(_Inout_ PRING_BUFFER Ring, _In_ ULONG bytes);
+ASIO4KRNL_INLINE VOID RingBufferAdvanceRead(_Inout_ PRING_BUFFER Ring, _In_ ULONG bytes);
 
 EVT_WDF_TIMER BufferTimerFunc;

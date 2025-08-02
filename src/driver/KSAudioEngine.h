@@ -4,6 +4,7 @@
 #include <wdf.h>
 #include <ks.h>
 #include <ksmedia.h>
+#include "Driver.h"
 
 // Core audio engine handling WDM-KS streaming without ASIO4ALL style wrappers.
 class KSAudioEngine {
@@ -22,16 +23,23 @@ public:
     void     Shutdown();
 
     // Logging helpers
-    void     LogUnderrun();
+    ASIO4KRNL_INLINE void LogUnderrun();
 
-    ULONG GetBufferSize() const { return m_bufferFrames; }
-    ULONG GetSampleRate() const { return m_sampleRate; }
-    ULONG GetChannelCount() const { return m_channels; }
+    ASIO4KRNL_INLINE ULONG GetBufferSize() const { return m_bufferFrames; }
+    ASIO4KRNL_INLINE ULONG GetSampleRate() const { return m_sampleRate; }
+    ASIO4KRNL_INLINE ULONG GetChannelCount() const { return m_channels; }
+    ASIO4KRNL_INLINE ULONG GetLatencyMs() const { 
+        if (!m_latencyCacheValid && m_sampleRate != 0) {
+            m_cachedLatencyMs = (m_bufferFrames * 1000) / m_sampleRate;
+            m_latencyCacheValid = true;
+        }
+        return m_cachedLatencyMs; 
+    }
 
 private:
     NTSTATUS CreatePins();
     NTSTATUS ConfigureBuffer();
-    void     LogLatency();
+    ASIO4KRNL_INLINE void LogLatency();
 
     WDFDEVICE m_device;
     HANDLE    m_pinIn;
@@ -42,5 +50,9 @@ private:
     ULONG  m_bufferFrames;
     PUCHAR m_buffer;
     SIZE_T m_bufferSize;
+    
+    // Optimize: Add cached values for frequently used calculations
+    mutable ULONG m_cachedLatencyMs;
+    mutable bool m_latencyCacheValid;
 };
 
