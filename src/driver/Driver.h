@@ -4,9 +4,10 @@
 #include <wdf.h>
 #include <wdfusb.h>
 
-// Performance and buffer size constants
-#define ASIO_BUFFER_SIZE_BYTES      4096
-#define RING_BUFFER_SIZE_BYTES      16384
+// Performance and buffer size constants (power of 2 for efficient operations)
+#define ASIO_BUFFER_SIZE_BYTES      4096   // 4KB
+#define RING_BUFFER_SIZE_BYTES      16384  // 16KB (power of 2)
+#define RING_BUFFER_SIZE_MASK       (RING_BUFFER_SIZE_BYTES - 1)  // For efficient modulo
 #define BUFFER_TIMER_PERIOD_MS      1
 #define DEFAULT_SAMPLE_RATE         48000
 #define DEFAULT_CHANNEL_COUNT       2
@@ -89,5 +90,11 @@ typedef struct _STREAM_CONTEXT {
 
 NTSTATUS InitRingBuffers(_In_ WDFDEVICE Device, _Out_ PSTREAM_CONTEXT Context);
 VOID     ReleaseRingBuffers(_Inout_ PSTREAM_CONTEXT Context);
+
+// Optimized ring buffer operations
+ASIO4KRNL_INLINE ULONG RingBufferAvailableRead(_In_ PRING_BUFFER Ring);
+ASIO4KRNL_INLINE ULONG RingBufferAvailableWrite(_In_ PRING_BUFFER Ring);
+ASIO4KRNL_INLINE VOID RingBufferAdvanceWrite(_Inout_ PRING_BUFFER Ring, _In_ ULONG bytes);
+ASIO4KRNL_INLINE VOID RingBufferAdvanceRead(_Inout_ PRING_BUFFER Ring, _In_ ULONG bytes);
 
 EVT_WDF_TIMER BufferTimerFunc;

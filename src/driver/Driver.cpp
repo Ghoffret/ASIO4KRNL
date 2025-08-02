@@ -165,15 +165,15 @@ NTSTATUS SetupAsioBuffers(_In_ WDFDEVICE Device)
     STREAM_CONTEXT streamCtx = {0};
     NTSTATUS status;
 
-    KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_INFO_LEVEL, "ASIO4KRNL: Setting up ASIO buffers\n"));
+    ASIO4KRNL_LOG_INFO("Setting up ASIO buffers\n");
 
     status = InitBuffers(Device, &bufferCtx);
-    if (!NT_SUCCESS(status)) {
+    if (ASIO4KRNL_UNLIKELY(!NT_SUCCESS(status))) {
         return status;
     }
 
     status = InitRingBuffers(Device, &streamCtx);
-    if (!NT_SUCCESS(status)) {
+    if (ASIO4KRNL_UNLIKELY(!NT_SUCCESS(status))) {
         ReleaseBuffers(&bufferCtx);
         return status;
     }
@@ -272,7 +272,7 @@ BufferTimerFunc(
     )
 {
     UNREFERENCED_PARAMETER(Timer);
-    KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_INFO_LEVEL, "ASIO4KRNL: Buffer timer fired\n"));
+    ASIO4KRNL_LOG_INFO("Buffer timer fired\n");
     // TODO: move data between ring buffer and USB pipes here
     g_KsEngine.LogUnderrun();
 }
@@ -281,12 +281,12 @@ NTSTATUS InitRingBuffers(_In_ WDFDEVICE Device, _Out_ PSTREAM_CONTEXT Context)
 {
     RtlZeroMemory(Context, sizeof(STREAM_CONTEXT));
 
-    KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_INFO_LEVEL, "ASIO4KRNL: Initializing ring buffers\n"));
+    ASIO4KRNL_LOG_INFO("Initializing ring buffers\n");
 
     // Optimize: Allocate both ring buffers in one operation
     const ULONG totalRingSize = RING_BUFFER_SIZE_BYTES * 2;
     PUCHAR ringBuffers = (PUCHAR)ExAllocatePoolWithTag(NonPagedPoolNx, totalRingSize, TAG_RING_BUFFER);
-    if (!ringBuffers) {
+    if (ASIO4KRNL_UNLIKELY(!ringBuffers)) {
         LogMessage("ring buffer allocation failed, size=%lu\n", totalRingSize);
         return STATUS_INSUFFICIENT_RESOURCES;
     }
@@ -311,10 +311,10 @@ NTSTATUS InitRingBuffers(_In_ WDFDEVICE Device, _Out_ PSTREAM_CONTEXT Context)
     attrs.ParentObject = Device;
     
     NTSTATUS status = WdfTimerCreate(&timerCfg, &attrs, &Context->BufferTimer);
-    if (!NT_SUCCESS(status)) {
+    if (ASIO4KRNL_UNLIKELY(!NT_SUCCESS(status))) {
         ExFreePoolWithTag(ringBuffers, TAG_RING_BUFFER);
         Context->InputRing.Buffer = Context->OutputRing.Buffer = NULL;
-        KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "ASIO4KRNL: timer create failed %x\n", status));
+        ASIO4KRNL_LOG_ERROR("timer create failed %x\n", status);
         LogMessage("timer creation failed %x\n", status);
     }
     return status;
@@ -322,7 +322,7 @@ NTSTATUS InitRingBuffers(_In_ WDFDEVICE Device, _Out_ PSTREAM_CONTEXT Context)
 
 VOID ReleaseRingBuffers(_Inout_ PSTREAM_CONTEXT Context)
 {
-    KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_INFO_LEVEL, "ASIO4KRNL: Releasing ring buffers\n"));
+    ASIO4KRNL_LOG_INFO("Releasing ring buffers\n");
     
     if (Context->BufferTimer) {
         WdfTimerStop(Context->BufferTimer, TRUE);
@@ -336,4 +336,31 @@ VOID ReleaseRingBuffers(_Inout_ PSTREAM_CONTEXT Context)
         Context->InputRing.Buffer = NULL;
         Context->OutputRing.Buffer = NULL;
     }
+}
+
+// Optimized ring buffer operations
+ASIO4KRNL_INLINE ULONG RingBufferAvailableRead(_In_ PRING_BUFFER Ring)
+{
+    // Optimize: Use efficient bitwise arithmetic for power-of-2 ring buffer sizes
+    const ULONG writePos = Ring->WritePos;
+    const ULONG readPos = Ring->ReadPos;
+    return (writePos - readPos) & RING_BUFFER_SIZE_MASK;
+}
+
+ASIO4KRNL_INLINE ULONG RingBufferAvailableWrite(_In_ PRING_BUFFER Ring)
+{
+    // Optimize: Keep one byte free to distinguish full from empty
+    return Ring->Size - RingBufferAvailableRead(Ring) - 1;
+}
+
+ASIO4KRNL_INLINE VOID RingBufferAdvanceWrite(_Inout_ PRING_BUFFER Ring, _In_ ULONG bytes)
+{
+    // Optimize: Use bitwise AND for power-of-2 ring buffer sizes (much faster than modulo)
+    Ring->WritePos = (Ring->WritePos + bytes) & RING_BUFFER_SIZE_MASK;
+}
+
+ASIO4KRNL_INLINE VOID RingBufferAdvanceRead(_Inout_ PRING_BUFFER Ring, _In_ ULONG bytes)
+{
+    // Optimize: Use bitwise AND for power-of-2 ring buffer sizes (much faster than modulo)
+    Ring->ReadPos = (Ring->ReadPos + bytes) & RING_BUFFER_SIZE_MASK;
 }

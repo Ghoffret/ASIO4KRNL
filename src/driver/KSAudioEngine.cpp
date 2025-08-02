@@ -11,7 +11,9 @@ KSAudioEngine::KSAudioEngine()
       m_channels(0),
       m_bufferFrames(0),
       m_buffer(nullptr),
-      m_bufferSize(0) {}
+      m_bufferSize(0),
+      m_cachedLatencyMs(0),
+      m_latencyCacheValid(false) {}
 
 KSAudioEngine::~KSAudioEngine() {
     Shutdown();
@@ -25,6 +27,7 @@ NTSTATUS KSAudioEngine::Initialize(_In_opt_ WDFDEVICE device,
     m_sampleRate = sampleRate;
     m_channels = channelCount;
     m_bufferFrames = bufferFrames;
+    m_latencyCacheValid = false; // Invalidate cache on parameter change
 
     ASIO4KRNL_LOG_INFO("Initializing KS engine SR=%lu ch=%lu frames=%lu\n",
                        sampleRate, channelCount, bufferFrames);
@@ -68,10 +71,14 @@ NTSTATUS KSAudioEngine::ConfigureBuffer() {
 }
 
 ASIO4KRNL_INLINE void KSAudioEngine::LogLatency() {
-    // Optimize: Avoid division if sample rate is zero (fast path)
-    if (ASIO4KRNL_LIKELY(m_sampleRate != 0)) {
-        const ULONG latencyMs = (m_bufferFrames * 1000) / m_sampleRate;
-        ASIO4KRNL_LOG_INFO("Estimated latency %lu ms\n", latencyMs);
+    // Optimize: Use cached latency calculation to avoid repeated division
+    if (!m_latencyCacheValid && ASIO4KRNL_LIKELY(m_sampleRate != 0)) {
+        m_cachedLatencyMs = (m_bufferFrames * 1000) / m_sampleRate;
+        m_latencyCacheValid = true;
+    }
+    
+    if (m_latencyCacheValid) {
+        ASIO4KRNL_LOG_INFO("Estimated latency %lu ms\n", m_cachedLatencyMs);
     }
 }
 
