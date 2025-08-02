@@ -29,5 +29,8 @@
   <ItemGroup>
     <ClCompile Include="ASIO4KrnlGUI.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="resource.h" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>
