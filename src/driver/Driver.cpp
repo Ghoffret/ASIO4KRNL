@@ -183,8 +183,8 @@ NTSTATUS SetupAsioBuffers(_In_ WDFDEVICE Device)
         return status;
     }
 
-    // Initialize kernel streaming engine with default parameters
-    status = g_KsEngine.Initialize(Device, 48000, 2, 256);
+    // Initialize kernel streaming engine with optimized default parameters
+    status = g_KsEngine.Initialize(Device, DEFAULT_SAMPLE_RATE, DEFAULT_CHANNEL_COUNT, DEFAULT_BUFFER_FRAMES);
     if (NT_SUCCESS(status)) {
         status = g_KsEngine.Start();
     }
@@ -218,24 +218,25 @@ NTSTATUS InitBuffers(_In_ WDFDEVICE Device, _Out_ PASIO_BUFFER_CONTEXT Context)
     RtlZeroMemory(Context, sizeof(ASIO_BUFFER_CONTEXT));
     KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_INFO_LEVEL, "ASIO4KRNL: Initializing ASIO double buffers\n"));
 
-    ULONG size = 4096; // placeholder buffer size
-    for (int i = 0; i < 2; ++i) {
-        Context->Input[i].Size = size;
-        Context->Input[i].Buffer = (PUCHAR)ExAllocatePoolWithTag(NonPagedPoolNx, size, '4ksA');
-        if (!Context->Input[i].Buffer) {
-            LogMessage("input buffer allocation failed\n");
-            ReleaseBuffers(Context);
-            return STATUS_INSUFFICIENT_RESOURCES;
-        }
-
-        Context->Output[i].Size = size;
-        Context->Output[i].Buffer = (PUCHAR)ExAllocatePoolWithTag(NonPagedPoolNx, size, '4ksA');
-        if (!Context->Output[i].Buffer) {
-            LogMessage("output buffer allocation failed\n");
-            ReleaseBuffers(Context);
-            return STATUS_INSUFFICIENT_RESOURCES;
-        }
+    // Optimize: Allocate all buffers in one operation to reduce overhead
+    const ULONG totalSize = ASIO_BUFFER_SIZE_BYTES * 4; // 2 input + 2 output buffers
+    PUCHAR allBuffers = (PUCHAR)ExAllocatePoolWithTag(NonPagedPoolNx, totalSize, TAG_ASIO_BUFFER);
+    if (!allBuffers) {
+        LogMessage("buffer allocation failed, size=%lu\n", totalSize);
+        return STATUS_INSUFFICIENT_RESOURCES;
     }
+
+    // Initialize buffer pointers with calculated offsets
+    for (int i = 0; i < 2; ++i) {
+        Context->Input[i].Size = ASIO_BUFFER_SIZE_BYTES;
+        Context->Input[i].Buffer = allBuffers + (i * ASIO_BUFFER_SIZE_BYTES);
+        
+        Context->Output[i].Size = ASIO_BUFFER_SIZE_BYTES;
+        Context->Output[i].Buffer = allBuffers + ((i + 2) * ASIO_BUFFER_SIZE_BYTES);
+    }
+
+    // Zero-initialize all buffers at once
+    RtlZeroMemory(allBuffers, totalSize);
 
     return STATUS_SUCCESS;
 }
@@ -243,13 +244,13 @@ NTSTATUS InitBuffers(_In_ WDFDEVICE Device, _Out_ PASIO_BUFFER_CONTEXT Context)
 VOID ReleaseBuffers(_Inout_ PASIO_BUFFER_CONTEXT Context)
 {
     KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_INFO_LEVEL, "ASIO4KRNL: Releasing ASIO buffers\n"));
-    for (int i = 0; i < 2; ++i) {
-        if (Context->Input[i].Buffer) {
-            ExFreePoolWithTag(Context->Input[i].Buffer, '4ksA');
+    
+    // Optimize: Since all buffers were allocated in one block, free only the first buffer pointer
+    if (Context->Input[0].Buffer) {
+        ExFreePoolWithTag(Context->Input[0].Buffer, TAG_ASIO_BUFFER);
+        // Clear all buffer pointers since they were part of the same allocation
+        for (int i = 0; i < 2; ++i) {
             Context->Input[i].Buffer = NULL;
-        }
-        if (Context->Output[i].Buffer) {
-            ExFreePoolWithTag(Context->Output[i].Buffer, '4ksA');
             Context->Output[i].Buffer = NULL;
         }
     }
@@ -282,42 +283,41 @@ BufferTimerFunc(
 
 NTSTATUS InitRingBuffers(_In_ WDFDEVICE Device, _Out_ PSTREAM_CONTEXT Context)
 {
-    UNREFERENCED_PARAMETER(Device);
     RtlZeroMemory(Context, sizeof(STREAM_CONTEXT));
 
     KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_INFO_LEVEL, "ASIO4KRNL: Initializing ring buffers\n"));
 
-    // Allocate simple ring buffers for beta testing
-    ULONG rbSize = 16384; // 16kB per ring
-    Context->InputRing.Buffer = (PUCHAR)ExAllocatePoolWithTag(NonPagedPoolNx,
-                                                              rbSize,
-                                                              '4ksR');
-    Context->OutputRing.Buffer = (PUCHAR)ExAllocatePoolWithTag(NonPagedPoolNx,
-                                                               rbSize,
-                                                               '4ksR');
-    if (!Context->InputRing.Buffer || !Context->OutputRing.Buffer) {
-        if (Context->InputRing.Buffer) {
-            ExFreePoolWithTag(Context->InputRing.Buffer, '4ksR');
-            Context->InputRing.Buffer = NULL;
-        }
-        if (Context->OutputRing.Buffer) {
-            ExFreePoolWithTag(Context->OutputRing.Buffer, '4ksR');
-            Context->OutputRing.Buffer = NULL;
-        }
+    // Optimize: Allocate both ring buffers in one operation
+    const ULONG totalRingSize = RING_BUFFER_SIZE_BYTES * 2;
+    PUCHAR ringBuffers = (PUCHAR)ExAllocatePoolWithTag(NonPagedPoolNx, totalRingSize, TAG_RING_BUFFER);
+    if (!ringBuffers) {
+        LogMessage("ring buffer allocation failed, size=%lu\n", totalRingSize);
         return STATUS_INSUFFICIENT_RESOURCES;
     }
-    Context->InputRing.Size  = rbSize;
-    Context->OutputRing.Size = rbSize;
+
+    // Initialize ring buffer structures with calculated offsets
+    Context->InputRing.Buffer = ringBuffers;
+    Context->InputRing.Size = RING_BUFFER_SIZE_BYTES;
     Context->InputRing.ReadPos = Context->InputRing.WritePos = 0;
+
+    Context->OutputRing.Buffer = ringBuffers + RING_BUFFER_SIZE_BYTES;
+    Context->OutputRing.Size = RING_BUFFER_SIZE_BYTES;
     Context->OutputRing.ReadPos = Context->OutputRing.WritePos = 0;
 
+    // Zero-initialize all ring buffers at once
+    RtlZeroMemory(ringBuffers, totalRingSize);
+
+    // Create timer with configurable period
     WDF_TIMER_CONFIG timerCfg;
     WDF_OBJECT_ATTRIBUTES attrs;
-    WDF_TIMER_CONFIG_INIT_PERIODIC(&timerCfg, BufferTimerFunc, 1); // 1ms placeholder
+    WDF_TIMER_CONFIG_INIT_PERIODIC(&timerCfg, BufferTimerFunc, BUFFER_TIMER_PERIOD_MS);
     WDF_OBJECT_ATTRIBUTES_INIT(&attrs);
     attrs.ParentObject = Device;
+    
     NTSTATUS status = WdfTimerCreate(&timerCfg, &attrs, &Context->BufferTimer);
     if (!NT_SUCCESS(status)) {
+        ExFreePoolWithTag(ringBuffers, TAG_RING_BUFFER);
+        Context->InputRing.Buffer = Context->OutputRing.Buffer = NULL;
         KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "ASIO4KRNL: timer create failed %x\n", status));
         LogMessage("timer creation failed %x\n", status);
     }
@@ -327,18 +327,17 @@ NTSTATUS InitRingBuffers(_In_ WDFDEVICE Device, _Out_ PSTREAM_CONTEXT Context)
 VOID ReleaseRingBuffers(_Inout_ PSTREAM_CONTEXT Context)
 {
     KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_INFO_LEVEL, "ASIO4KRNL: Releasing ring buffers\n"));
+    
     if (Context->BufferTimer) {
         WdfTimerStop(Context->BufferTimer, TRUE);
         WdfObjectDelete(Context->BufferTimer);
         Context->BufferTimer = NULL;
     }
 
+    // Optimize: Since both ring buffers were allocated in one block, free only the first buffer pointer
     if (Context->InputRing.Buffer) {
-        ExFreePoolWithTag(Context->InputRing.Buffer, '4ksR');
+        ExFreePoolWithTag(Context->InputRing.Buffer, TAG_RING_BUFFER);
         Context->InputRing.Buffer = NULL;
-    }
-    if (Context->OutputRing.Buffer) {
-        ExFreePoolWithTag(Context->OutputRing.Buffer, '4ksR');
         Context->OutputRing.Buffer = NULL;
     }
 }

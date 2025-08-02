@@ -1,4 +1,5 @@
 #include "KSAudioEngine.h"
+#include "Driver.h"
 
 #define TAG_KSENG 'GSKA'
 
@@ -51,13 +52,18 @@ NTSTATUS KSAudioEngine::CreatePins() {
 }
 
 NTSTATUS KSAudioEngine::ConfigureBuffer() {
+    // Optimize: Calculate buffer size based on actual audio format requirements
+    // 16-bit samples (2 bytes) * channels * frames for optimal memory usage
     m_bufferSize = m_bufferFrames * m_channels * sizeof(USHORT);
+    
     m_buffer = static_cast<PUCHAR>(ExAllocatePoolWithTag(NonPagedPoolNx,
                                                         m_bufferSize,
                                                         TAG_KSENG));
     if (!m_buffer) {
         return STATUS_INSUFFICIENT_RESOURCES;
     }
+    
+    // Optimize: Use RtlZeroMemory for better performance than individual initialization
     RtlZeroMemory(m_buffer, m_bufferSize);
     return STATUS_SUCCESS;
 }

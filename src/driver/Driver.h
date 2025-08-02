@@ -4,6 +4,18 @@
 #include <wdf.h>
 #include <wdfusb.h>
 
+// Performance and buffer size constants
+#define ASIO_BUFFER_SIZE_BYTES      4096
+#define RING_BUFFER_SIZE_BYTES      16384
+#define BUFFER_TIMER_PERIOD_MS      1
+#define DEFAULT_SAMPLE_RATE         48000
+#define DEFAULT_CHANNEL_COUNT       2
+#define DEFAULT_BUFFER_FRAMES       256
+
+// Pool tags for memory allocation tracking
+#define TAG_ASIO_BUFFER    '4ksA'
+#define TAG_RING_BUFFER    '4ksR'
+
 extern "C" {
     DRIVER_INITIALIZE DriverEntry;
 }

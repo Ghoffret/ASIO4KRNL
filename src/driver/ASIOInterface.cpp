@@ -14,7 +14,7 @@ __declspec(dllexport) LONG ASIOInit(void* sysHandle)
 {
     UNREFERENCED_PARAMETER(sysHandle);
     KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_INFO_LEVEL, "ASIO4KRNL: ASIOInit called\n"));
-    NTSTATUS status = g_KsEngine.Initialize(nullptr, 48000, 2, 256);
+    NTSTATUS status = g_KsEngine.Initialize(nullptr, DEFAULT_SAMPLE_RATE, DEFAULT_CHANNEL_COUNT, DEFAULT_BUFFER_FRAMES);
     return NT_SUCCESS(status) ? 0 : -1;
 }
 
@@ -34,7 +34,7 @@ __declspec(dllexport) LONG ASIOCreateBuffers(void* bufferInfos, LONG numChannels
     UNREFERENCED_PARAMETER(callbacks);
     KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_INFO_LEVEL, "ASIO4KRNL: ASIOCreateBuffers called ch=%ld size=%ld\n", numChannels, bufferSize));
     g_KsEngine.Shutdown();
-    NTSTATUS status = g_KsEngine.Initialize(nullptr, 48000, numChannels, bufferSize);
+    NTSTATUS status = g_KsEngine.Initialize(nullptr, DEFAULT_SAMPLE_RATE, numChannels, bufferSize);
     return NT_SUCCESS(status) ? 0 : -1;
 }
 
