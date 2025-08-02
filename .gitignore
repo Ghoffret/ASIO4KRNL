@@ -1,12 +1,37 @@
 # Build directories and files
 x64/
+x86/
+Debug/
+Release/
 *.obj
 *.pdb
+*.exe
+*.dll
+*.sys
+*.inf
+*.cat
 
 # Visual Studio specific files
 *.vcxproj.user
+*.suo
+*.user
+.vs/
 ipch/
+
+# MSI Installer output
+installer/Output/
+*.msi
+*.wixobj
+*.wixpdb
+
+# Temporary files
+*.tmp
+*.temp
+*~
 
 # Python cache directories
 __pycache__/
 .pytest_cache/
+
+# Build logs
+*.log
