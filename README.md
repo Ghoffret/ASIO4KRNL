@@ -9,8 +9,42 @@ The code is intentionally simplified and does **not** implement a full audio sta
 
 ## Building
 
+### Building Components
 Ensure you have Visual Studio and the Windows Driver Kit (WDK) installed. Run `setup.bat` from a Developer Command Prompt to build and optionally install the driver.
 To actually install the driver, launch the script as **Administrator** so that `devcon` or `pnputil` can copy the driver package.
+
+### Building MSI Installer
+For creating a Windows Installer package (.msi):
+
+1. **Prerequisites**: 
+   - Visual Studio 2019+ with WDK
+   - WiX Toolset v3.11+ (https://wixtoolset.org/releases/)
+
+2. **Build MSI**:
+   ```batch
+   # Quick build (run as Administrator)
+   installer\build-msi.bat
+   
+   # Or using PowerShell
+   installer\build-msi.ps1
+   ```
+
+3. **Manual Build**:
+   ```batch
+   # Build components first
+   msbuild src\driver\ASIOUSB.vcxproj /p:Configuration=Release /p:Platform=x64
+   msbuild src\gui\ASIO4KrnlGUI.vcxproj /p:Configuration=Release /p:Platform=x64
+   
+   # Build MSI installer
+   msbuild installer\ASIO4KrnlInstaller.wixproj /p:Configuration=Release
+   ```
+
+The MSI installer provides:
+- User-friendly installation wizard
+- Automatic driver installation and registration
+- Proper uninstallation support
+- Version management for updates
+- Windows Control Panel integration
 
 ## Files
 
