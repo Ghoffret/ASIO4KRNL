@@ -232,7 +232,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     wc.hbrBackground = g_state.hBrushBg;
     RegisterClassEx(&wc);
 
-    HWND hwnd = CreateWindowEx(0, wc.lpszClassName, L"ASIO4Krnl Settings (Beta)",
+    HWND hwnd = CreateWindowEx(0, wc.lpszClassName, L"ASIO4KRNL Settings",
                                WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN,
                                CW_USEDEFAULT, CW_USEDEFAULT,
                                g_state.minWidth, g_state.minHeight,
@@ -246,20 +246,21 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                                          CW_USEDEFAULT, hwnd, nullptr, hInstance,
                                          nullptr);
 
-    std::wstring title = std::wstring(L"ASIO4Krnl Settings (Beta) - v") + ASIO4KRNL_VERSION;
+    std::wstring title = std::wstring(L"ASIO4KRNL Settings - v") + ASIO4KRNL_VERSION;
     SetWindowText(hwnd, title.c_str());
     ShowWindow(hwnd, nCmdShow);
     UpdateWindow(hwnd);
     
-    // Show beta warning with modern styling
+    // Show welcome message with professional presentation
     MessageBox(hwnd, 
-               L"Beta software \x2013 use at your own risk.\n\n"
-               L"This version includes enhanced GUI features:\n"
-               L"• Modern design with theme support\n"
-               L"• Improved settings validation\n"
-               L"• Responsive window layout\n"
-               L"• Enhanced error handling",
-               L"ASIO4Krnl Beta", MB_ICONINFORMATION | MB_OK);
+               L"Welcome to ASIO4KRNL Professional Audio Driver.\n\n"
+               L"This version includes enhanced features:\n"
+               L"• Ultra-low latency kernel-mode operation\n"
+               L"• Modern GUI with theme support\n"
+               L"• Advanced settings validation\n"
+               L"• Comprehensive device compatibility\n"
+               L"• Professional performance monitoring",
+               L"ASIO4KRNL Professional", MB_ICONINFORMATION | MB_OK);
     LogGui(L"Enhanced GUI started\n");
 
     ShowWizardIfRequested(lpCmdLine, hwnd);
@@ -280,7 +281,7 @@ static void AddTrayIcon(HWND hwnd)
     g_state.nid.uFlags           = NIF_MESSAGE | NIF_ICON | NIF_TIP;
     g_state.nid.uCallbackMessage = WM_TRAYICON;
     g_state.nid.hIcon            = LoadIcon(nullptr, IDI_APPLICATION);
-    wcscpy_s(g_state.nid.szTip, L"ASIO4Krnl Settings (Beta)");
+    wcscpy_s(g_state.nid.szTip, L"ASIO4KRNL Professional Audio Driver");
     Shell_NotifyIcon(NIM_ADD, &g_state.nid);
 }
 

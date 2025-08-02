@@ -1,2 +1,2 @@
 #pragma once
-#define ASIO4KRNL_VERSION L"0.2.1-beta-optimized"
+#define ASIO4KRNL_VERSION L"1.0.0"
