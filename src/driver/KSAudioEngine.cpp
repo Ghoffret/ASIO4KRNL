@@ -26,12 +26,11 @@ NTSTATUS KSAudioEngine::Initialize(_In_opt_ WDFDEVICE device,
     m_channels = channelCount;
     m_bufferFrames = bufferFrames;
 
-    KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_INFO_LEVEL,
-               "ASIO4KRNL: Initializing KS engine SR=%lu ch=%lu frames=%lu\n",
-               sampleRate, channelCount, bufferFrames));
+    ASIO4KRNL_LOG_INFO("Initializing KS engine SR=%lu ch=%lu frames=%lu\n",
+                       sampleRate, channelCount, bufferFrames);
 
     NTSTATUS status = CreatePins();
-    if (!NT_SUCCESS(status)) {
+    if (ASIO4KRNL_UNLIKELY(!NT_SUCCESS(status))) {
         return status;
     }
 
@@ -68,30 +67,26 @@ NTSTATUS KSAudioEngine::ConfigureBuffer() {
     return STATUS_SUCCESS;
 }
 
-void KSAudioEngine::LogLatency() {
-    ULONG latencyMs = 0;
-    if (m_sampleRate) {
-        latencyMs = (m_bufferFrames * 1000) / m_sampleRate;
+ASIO4KRNL_INLINE void KSAudioEngine::LogLatency() {
+    // Optimize: Avoid division if sample rate is zero (fast path)
+    if (ASIO4KRNL_LIKELY(m_sampleRate != 0)) {
+        const ULONG latencyMs = (m_bufferFrames * 1000) / m_sampleRate;
+        ASIO4KRNL_LOG_INFO("Estimated latency %lu ms\n", latencyMs);
     }
-    KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_INFO_LEVEL,
-               "ASIO4KRNL: Estimated latency %lu ms\n", latencyMs));
 }
 
-void KSAudioEngine::LogUnderrun() {
-    KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL,
-               "ASIO4KRNL: Buffer underrun detected\n"));
+ASIO4KRNL_INLINE void KSAudioEngine::LogUnderrun() {
+    ASIO4KRNL_LOG_ERROR("Buffer underrun detected\n");
 }
 
 NTSTATUS KSAudioEngine::Start() {
-    KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_INFO_LEVEL,
-               "ASIO4KRNL: Starting KS streaming (stub)\n"));
+    ASIO4KRNL_LOG_INFO("Starting KS streaming (stub)\n");
     // TODO: transition pins to KSSTATE_RUN and begin transfer
     return STATUS_SUCCESS;
 }
 
 NTSTATUS KSAudioEngine::Stop() {
-    KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_INFO_LEVEL,
-               "ASIO4KRNL: Stopping KS streaming (stub)\n"));
+    ASIO4KRNL_LOG_INFO("Stopping KS streaming (stub)\n");
     // TODO: transition pins to KSSTATE_STOP
     return STATUS_SUCCESS;
 }

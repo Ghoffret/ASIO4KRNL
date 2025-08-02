@@ -4,6 +4,7 @@
 #include <wdf.h>
 #include <ks.h>
 #include <ksmedia.h>
+#include "Driver.h"
 
 // Core audio engine handling WDM-KS streaming without ASIO4ALL style wrappers.
 class KSAudioEngine {
@@ -22,11 +23,11 @@ public:
     void     Shutdown();
 
     // Logging helpers
-    void     LogUnderrun();
+    ASIO4KRNL_INLINE void LogUnderrun();
 
-    ULONG GetBufferSize() const { return m_bufferFrames; }
-    ULONG GetSampleRate() const { return m_sampleRate; }
-    ULONG GetChannelCount() const { return m_channels; }
+    ASIO4KRNL_INLINE ULONG GetBufferSize() const { return m_bufferFrames; }
+    ASIO4KRNL_INLINE ULONG GetSampleRate() const { return m_sampleRate; }
+    ASIO4KRNL_INLINE ULONG GetChannelCount() const { return m_channels; }
 
 private:
     NTSTATUS CreatePins();

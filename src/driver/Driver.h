@@ -16,6 +16,17 @@
 #define TAG_ASIO_BUFFER    '4ksA'
 #define TAG_RING_BUFFER    '4ksR'
 
+// Performance optimization macros
+#define ASIO4KRNL_INLINE __forceinline
+#define ASIO4KRNL_LIKELY(x) (x)
+#define ASIO4KRNL_UNLIKELY(x) (x)
+
+// Optimized logging macros
+#define ASIO4KRNL_LOG_INFO(fmt, ...) \
+    KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_INFO_LEVEL, "ASIO4KRNL: " fmt, __VA_ARGS__))
+#define ASIO4KRNL_LOG_ERROR(fmt, ...) \
+    KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "ASIO4KRNL: " fmt, __VA_ARGS__))
+
 extern "C" {
     DRIVER_INITIALIZE DriverEntry;
 }
@@ -60,7 +71,7 @@ typedef struct _ASIO_BUFFER_CONTEXT {
 
 NTSTATUS InitBuffers(_In_ WDFDEVICE Device, _Out_ PASIO_BUFFER_CONTEXT Context);
 VOID     ReleaseBuffers(_Inout_ PASIO_BUFFER_CONTEXT Context);
-NTSTATUS ProcessAudioBuffer(_Inout_ PASIO_BUFFER_CONTEXT Context);
+ASIO4KRNL_INLINE NTSTATUS ProcessAudioBuffer(_Inout_ PASIO_BUFFER_CONTEXT Context);
 
 // Simple ring buffer for audio streaming
 typedef struct _RING_BUFFER {

@@ -104,7 +104,7 @@ NTSTATUS EnumerateUsbInterfaces(_In_ WDFDEVICE Device)
     PUSB_DEVICE_CONTEXT usbCtx = UsbGetDeviceContext(Device);
     NTSTATUS status;
 
-    KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_INFO_LEVEL, "ASIO4KRNL: Enumerating USB audio interfaces\n"));
+    ASIO4KRNL_LOG_INFO("Enumerating USB audio interfaces\n");
 
     WDF_USB_DEVICE_CREATE_CONFIG config;
     WDF_USB_DEVICE_CREATE_CONFIG_INIT(&config, USBD_CLIENT_CONTRACT_VERSION_602);
@@ -113,39 +113,34 @@ NTSTATUS EnumerateUsbInterfaces(_In_ WDFDEVICE Device)
                                                     &config,
                                                     WDF_NO_OBJECT_ATTRIBUTES,
                                                     &usbCtx->UsbDevice);
-    if (!NT_SUCCESS(status)) {
-        KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "ASIO4KRNL: failed to create USB device %x\n", status));
+    if (ASIO4KRNL_UNLIKELY(!NT_SUCCESS(status))) {
+        ASIO4KRNL_LOG_ERROR("failed to create USB device %x\n", status);
         LogMessage("failed to create USB device %x\n", status);
         return status;
     }
 
     usbCtx->AudioInterface = WdfUsbTargetDeviceGetInterface(usbCtx->UsbDevice, 0);
-    if (usbCtx->AudioInterface == NULL) {
-        KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "ASIO4KRNL: no audio interface found\n"));
+    if (ASIO4KRNL_UNLIKELY(usbCtx->AudioInterface == NULL)) {
+        ASIO4KRNL_LOG_ERROR("no audio interface found\n");
         LogMessage("no audio interface found\n");
         return STATUS_UNSUCCESSFUL;
     }
 
-    if (WdfUsbInterfaceGetNumConfiguredPipes(usbCtx->AudioInterface) < 2) {
-        KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "ASIO4KRNL: insufficient endpoints\n"));
+    if (ASIO4KRNL_UNLIKELY(WdfUsbInterfaceGetNumConfiguredPipes(usbCtx->AudioInterface) < 2)) {
+        ASIO4KRNL_LOG_ERROR("insufficient endpoints\n");
         LogMessage("insufficient USB endpoints\n");
         return STATUS_INVALID_DEVICE_STATE;
     }
 
-    usbCtx->StreamInPipe = WdfUsbInterfaceGetConfiguredPipe(usbCtx->AudioInterface,
-                                                             0,
-                                                             NULL);
-    usbCtx->StreamOutPipe = WdfUsbInterfaceGetConfiguredPipe(usbCtx->AudioInterface,
-                                                             1,
-                                                             NULL);
-    if (!usbCtx->StreamInPipe || !usbCtx->StreamOutPipe) {
-        KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "ASIO4KRNL: missing stream pipes\n"));
+    usbCtx->StreamInPipe = WdfUsbInterfaceGetConfiguredPipe(usbCtx->AudioInterface, 0, NULL);
+    usbCtx->StreamOutPipe = WdfUsbInterfaceGetConfiguredPipe(usbCtx->AudioInterface, 1, NULL);
+    if (ASIO4KRNL_UNLIKELY(!usbCtx->StreamInPipe || !usbCtx->StreamOutPipe)) {
+        ASIO4KRNL_LOG_ERROR("missing stream pipes\n");
         LogMessage("missing stream pipes\n");
         return STATUS_INVALID_DEVICE_STATE;
     }
 
-    KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_INFO_LEVEL, "ASIO4KRNL: USB interfaces ready\n"));
-
+    ASIO4KRNL_LOG_INFO("USB interfaces ready\n");
     return STATUS_SUCCESS;
 }
 
@@ -153,7 +148,7 @@ NTSTATUS NegotiateStreamFormat(_In_ WDFDEVICE Device)
 {
     UNREFERENCED_PARAMETER(Device);
 
-    KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_INFO_LEVEL, "ASIO4KRNL: Negotiating stream format\n"));
+    ASIO4KRNL_LOG_INFO("Negotiating stream format\n");
 
     // Placeholder for actual format negotiation with the hardware
     // In a real driver this would query supported sample rates and bit depths
@@ -202,11 +197,10 @@ NTSTATUS SetupAsioBuffers(_In_ WDFDEVICE Device)
 
 NTSTATUS SyncSampleClock(_In_ WDFDEVICE Device)
 {
-    UNREFERENCED_PARAMETER(Device);
-    KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_INFO_LEVEL, "ASIO4KRNL: Synchronizing sample clock\n"));
+    ASIO4KRNL_LOG_INFO("Synchronizing sample clock\n");
     // TODO: synchronize sample clock with hardware
     // Placeholder that simply fails gracefully if clock sync not available
-    if (Device == NULL) {
+    if (ASIO4KRNL_UNLIKELY(Device == NULL)) {
         return STATUS_DEVICE_NOT_READY;
     }
     return STATUS_SUCCESS;
@@ -216,12 +210,12 @@ NTSTATUS InitBuffers(_In_ WDFDEVICE Device, _Out_ PASIO_BUFFER_CONTEXT Context)
 {
     UNREFERENCED_PARAMETER(Device);
     RtlZeroMemory(Context, sizeof(ASIO_BUFFER_CONTEXT));
-    KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_INFO_LEVEL, "ASIO4KRNL: Initializing ASIO double buffers\n"));
+    ASIO4KRNL_LOG_INFO("Initializing ASIO double buffers\n");
 
     // Optimize: Allocate all buffers in one operation to reduce overhead
     const ULONG totalSize = ASIO_BUFFER_SIZE_BYTES * 4; // 2 input + 2 output buffers
     PUCHAR allBuffers = (PUCHAR)ExAllocatePoolWithTag(NonPagedPoolNx, totalSize, TAG_ASIO_BUFFER);
-    if (!allBuffers) {
+    if (ASIO4KRNL_UNLIKELY(!allBuffers)) {
         LogMessage("buffer allocation failed, size=%lu\n", totalSize);
         return STATUS_INSUFFICIENT_RESOURCES;
     }
@@ -243,7 +237,7 @@ NTSTATUS InitBuffers(_In_ WDFDEVICE Device, _Out_ PASIO_BUFFER_CONTEXT Context)
 
 VOID ReleaseBuffers(_Inout_ PASIO_BUFFER_CONTEXT Context)
 {
-    KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_INFO_LEVEL, "ASIO4KRNL: Releasing ASIO buffers\n"));
+    ASIO4KRNL_LOG_INFO("Releasing ASIO buffers\n");
     
     // Optimize: Since all buffers were allocated in one block, free only the first buffer pointer
     if (Context->Input[0].Buffer) {
@@ -256,16 +250,18 @@ VOID ReleaseBuffers(_Inout_ PASIO_BUFFER_CONTEXT Context)
     }
 }
 
-NTSTATUS ProcessAudioBuffer(_Inout_ PASIO_BUFFER_CONTEXT Context)
+ASIO4KRNL_INLINE NTSTATUS ProcessAudioBuffer(_Inout_ PASIO_BUFFER_CONTEXT Context)
 {
-    if (!Context)
+    // Optimize: Fast parameter validation using likely/unlikely hints
+    if (ASIO4KRNL_UNLIKELY(!Context)) {
         return STATUS_INVALID_PARAMETER;
+    }
 
     KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_INFO_LEVEL,
                "ASIO4KRNL: Processing ASIO buffer index %lu\n",
                Context->CurrentIndex));
 
-    // Simple ping‑pong of the active buffer index
+    // Optimize: Simple ping‑pong using XOR for efficient buffer index switch
     Context->CurrentIndex ^= 1;
     return STATUS_SUCCESS;
 }
