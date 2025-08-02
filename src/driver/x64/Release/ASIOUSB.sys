@@ -1,0 +1,3 @@
+# ASIO4KRNL Driver Placeholder
+# This is a placeholder file for installer testing
+# In a real build, this would be the compiled kernel driver
