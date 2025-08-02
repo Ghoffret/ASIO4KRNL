@@ -1,56 +1,200 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
-  <Product Id="*" Name="ASIO4Krnl" Language="1033" Version="0.1.0" Manufacturer="ASIO4Krnl" UpgradeCode="{CDE4B0E2-2E5F-4C3F-95C8-1234567890AB}">
-    <Package InstallerVersion="500" Compressed="yes" InstallScope="perMachine"/>
-    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
-    <Condition Message="Administrator privileges required.">Installed OR Privileged</Condition>
-    <MediaTemplate/>
+  <Product Id="*" Name="ASIO4KRNL Professional Audio Driver" Language="1033" Version="1.0.0" 
+           Manufacturer="ASIO4KRNL" UpgradeCode="{CDE4B0E2-2E5F-4C3F-95C8-1234567890AB}">
+    <Package InstallerVersion="500" Compressed="yes" InstallScope="perMachine" 
+             Description="Professional low-latency audio driver for Windows"
+             Comments="ASIO4KRNL - Professional Audio Driver v1.0.0"
+             Manufacturer="ASIO4KRNL"/>
+    
+    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." 
+                  AllowSameVersionUpgrades="yes" />
+    
+    <!-- Require administrator privileges -->
+    <Condition Message="Administrator privileges are required to install ASIO4KRNL.">Installed OR Privileged</Condition>
+    
+    <!-- System requirements -->
+    <Condition Message="ASIO4KRNL requires Windows 10 or later.">
+      <![CDATA[Installed OR (VersionNT >= 1000)]]>
+    </Condition>
+    
+    <Condition Message="ASIO4KRNL requires a 64-bit operating system.">
+      <![CDATA[Installed OR VersionNT64]]>
+    </Condition>
+    
+    <MediaTemplate EmbedCab="yes" />
 
-    <Feature Id="DefaultFeature" Level="1">
-      <ComponentGroupRef Id="AppComponents"/>
+    <!-- Main feature -->
+    <Feature Id="DefaultFeature" Level="1" Title="ASIO4KRNL Audio Driver" 
+             Description="Complete ASIO4KRNL installation including driver and control panel">
+      <ComponentGroupRef Id="DriverComponents"/>
+      <ComponentGroupRef Id="GuiComponents"/>
+      <ComponentGroupRef Id="DocumentationComponents"/>
+    </Feature>
+    
+    <!-- Optional documentation feature -->
+    <Feature Id="DocumentationFeature" Level="1" Title="Documentation and Guides"
+             Description="User manual, installation guide, and compatibility documentation">
+      <ComponentGroupRef Id="ExtendedDocumentationComponents"/>
     </Feature>
   </Product>
 
+  <!-- Directory structure -->
   <Fragment>
     <Directory Id="TARGETDIR" Name="SourceDir">
-      <Directory Id="ProgramFilesFolder">
-        <Directory Id="INSTALLDIR" Name="ASIO4Krnl"/>
+      <Directory Id="ProgramFiles64Folder">
+        <Directory Id="INSTALLDIR" Name="ASIO4KRNL">
+          <Directory Id="DOCSDIR" Name="Documentation"/>
+          <Directory Id="DRIVERSDIR" Name="Drivers"/>
+        </Directory>
       </Directory>
       <Directory Id="ProgramMenuFolder">
-        <Directory Id="ProgramMenuDir" Name="ASIO4Krnl"/>
+        <Directory Id="ProgramMenuDir" Name="ASIO4KRNL"/>
       </Directory>
       <Directory Id="DesktopFolder" />
+      <Directory Id="StartupFolder" />
+      <Directory Id="System64Folder" />
     </Directory>
   </Fragment>
 
+  <!-- Driver components -->
   <Fragment>
-    <ComponentGroup Id="AppComponents" Directory="INSTALLDIR">
-      <Component Id="DriverFiles" Guid="{F4A9F16C-9A61-4F94-9695-E7BA984B1234}">
-        <File Source="..\src\driver\ASIOUSB.sys" />
-        <File Source="..\src\driver\ASIOUSB.inf" />
-        <RemoveFile Id="DriverInf" Name="ASIOUSB.inf" On="uninstall" />
-      </Component>
-      <Component Id="GuiExe" Guid="{AC91A2B2-8BBA-4C1E-A78B-DF12345C5678}">
-        <File Source="..\bin\Release\ASIO4KrnlGUI.exe"/>
-        <Shortcut Id="StartMenuShortcut" Directory="ProgramMenuDir" Name="ASIO4Krnl Settings" WorkingDirectory="INSTALLDIR" Icon="AppIcon.ico" Advertise="no" />
-        <Shortcut Id="DesktopShortcut" Directory="DesktopFolder" Name="ASIO4Krnl Settings" WorkingDirectory="INSTALLDIR" Icon="AppIcon.ico" Advertise="no" />
-        <RemoveFile Id="RemoveDesktopShortcut" On="uninstall" Name="ASIO4Krnl Settings.lnk" Directory="DesktopFolder" />
-        <RemoveFile Id="RemoveStartMenuDir" On="uninstall" Name="ASIO4Krnl" Directory="ProgramMenuFolder" />
-      </Component>
-      <Component Id="Readme" Guid="{C1234567-89AB-4AF8-B012-DEF123456789}">
-        <File Source="README.txt" KeyPath="yes"/>
+    <ComponentGroup Id="DriverComponents" Directory="DRIVERSDIR">
+      <Component Id="KernelDriver" Guid="{F4A9F16C-9A61-4F94-9695-E7BA984B1234}">
+        <File Id="DriverSys" Source="..\src\driver\x64\Release\ASIOUSB.sys" 
+              KeyPath="yes" Checksum="yes"/>
+        <File Id="DriverInf" Source="..\src\driver\ASIOUSB.inf" 
+              Checksum="yes"/>
+        
+        <!-- Custom action to install driver -->
+        <ServiceInstall Id="ASIO4KRNLService" 
+                       Name="ASIO4KRNL" 
+                       DisplayName="ASIO4KRNL Audio Driver Service"
+                       Description="High-performance audio driver service"
+                       Type="kernelDriver" 
+                       Start="auto" 
+                       ErrorControl="normal" />
+        
+        <ServiceControl Id="StartASIO4KRNLService" 
+                       Name="ASIO4KRNL" 
+                       Start="install" 
+                       Stop="both" 
+                       Remove="uninstall" 
+                       Wait="yes" />
       </Component>
     </ComponentGroup>
-    <CustomAction Id="LaunchWizard" FileKey="GuiExe" ExeCommand="/wizard" Execute="deferred" Return="check" />
-    <InstallExecuteSequence>
-      <Custom Action="LaunchWizard" After="InstallFinalize">NOT Installed</Custom>
-    </InstallExecuteSequence>
   </Fragment>
 
+  <!-- GUI application components -->
   <Fragment>
-    <Icon Id="AppIcon.ico" SourceFile="..\installer\AppIcon.ico"/>
-    <!-- TODO: Insert CertMgr and SignTool commands here for driver signing -->
+    <ComponentGroup Id="GuiComponents" Directory="INSTALLDIR">
+      <Component Id="GuiApplication" Guid="{AC91A2B2-8BBA-4C1E-A78B-DF12345C5678}">
+        <File Id="GuiExe" Source="..\src\gui\x64\Release\ASIO4KrnlGUI.exe" 
+              KeyPath="yes" Checksum="yes"/>
+        
+        <!-- Start Menu shortcut -->
+        <Shortcut Id="StartMenuShortcut" 
+                  Directory="ProgramMenuDir" 
+                  Name="ASIO4KRNL Settings" 
+                  Description="Configure ASIO4KRNL audio driver settings"
+                  WorkingDirectory="INSTALLDIR" 
+                  Icon="AppIcon.ico" 
+                  Advertise="no" />
+        
+        <!-- Desktop shortcut -->
+        <Shortcut Id="DesktopShortcut" 
+                  Directory="DesktopFolder" 
+                  Name="ASIO4KRNL Settings" 
+                  Description="Configure ASIO4KRNL audio driver settings"
+                  WorkingDirectory="INSTALLDIR" 
+                  Icon="AppIcon.ico" 
+                  Advertise="no" />
+        
+        <!-- Registry entries for ASIO driver registration -->
+        <RegistryKey Root="HKLM" Key="SOFTWARE\ASIO\ASIO4KRNL">
+          <RegistryValue Name="Description" Value="ASIO4KRNL Professional Audio Driver" Type="string"/>
+          <RegistryValue Name="CLSID" Value="{12345678-1234-1234-1234-123456789012}" Type="string"/>
+          <RegistryValue Name="Path" Value="[INSTALLDIR]ASIO4KrnlGUI.exe" Type="string"/>
+        </RegistryKey>
+        
+        <!-- System tray autostart (optional) -->
+        <RegistryKey Root="HKCU" Key="SOFTWARE\Microsoft\Windows\CurrentVersion\Run">
+          <RegistryValue Name="ASIO4KRNL" Value="[INSTALLDIR]ASIO4KrnlGUI.exe /tray" Type="string"/>
+        </RegistryKey>
+      </Component>
+      
+      <!-- Uninstall cleanup -->
+      <Component Id="UninstallCleanup" Guid="{B2345678-1234-1234-1234-123456789012}">
+        <RemoveFile Id="RemoveDesktopShortcut" On="uninstall" Name="ASIO4KRNL Settings.lnk" Directory="DesktopFolder" />
+        <RemoveFolder Id="RemoveStartMenuDir" On="uninstall" Directory="ProgramMenuDir" />
+        <RemoveFolder Id="RemoveInstallDir" On="uninstall" Directory="INSTALLDIR" />
+        <CreateFolder />
+      </Component>
+    </ComponentGroup>
+  </Fragment>
+
+  <!-- Basic documentation components -->
+  <Fragment>
+    <ComponentGroup Id="DocumentationComponents" Directory="DOCSDIR">
+      <Component Id="BasicDocumentation" Guid="{C1234567-89AB-4AF8-B012-DEF123456789}">
+        <File Id="ReadmeFile" Source="README.txt" KeyPath="yes"/>
+        <File Id="LicenseFile" Source="..\LICENSE"/>
+      </Component>
+    </ComponentGroup>
+  </Fragment>
+
+  <!-- Extended documentation components -->
+  <Fragment>
+    <ComponentGroup Id="ExtendedDocumentationComponents" Directory="DOCSDIR">
+      <Component Id="ExtendedDocumentation" Guid="{D1234567-89AB-4AF8-B012-DEF123456789}">
+        <File Id="InstallationGuide" Source="..\INSTALLATION_GUIDE.md"/>
+        <File Id="UserManual" Source="..\USER_MANUAL.md"/>
+        <File Id="DeviceCompatibility" Source="..\DEVICE_COMPATIBILITY.md"/>
+        <CreateFolder />
+      </Component>
+    </ComponentGroup>
+  </Fragment>
+
+  <!-- Custom actions and UI -->
+  <Fragment>
+    <!-- Application icon -->
+    <Icon Id="AppIcon.ico" SourceFile="AppIcon.ico"/>
+    <Property Id="ARPPRODUCTICON" Value="AppIcon.ico" />
+    
+    <!-- Add/Remove Programs information -->
+    <Property Id="ARPHELPLINK" Value="https://github.com/Ghoffret/ASIO4KRNL" />
+    <Property Id="ARPURLINFOABOUT" Value="https://github.com/Ghoffret/ASIO4KRNL" />
+    <Property Id="ARPNOMODIFY" Value="1" />
+    
+    <!-- Launch application after install -->
+    <CustomAction Id="LaunchGUI" 
+                  FileKey="GuiExe" 
+                  ExeCommand="/firstrun" 
+                  Execute="immediate" 
+                  Return="asyncNoWait" 
+                  Impersonate="yes" />
+    
+    <!-- Driver signing preparation (placeholder for future implementation) -->
     <Property Id="SIGNTOOL" Value="$(var.SignToolPath)"/>
     <Property Id="CERTMGR" Value="$(var.CertMgrPath)"/>
+    
+    <!-- Installation sequence -->
+    <InstallExecuteSequence>
+      <!-- Launch GUI after successful installation -->
+      <Custom Action="LaunchGUI" After="InstallFinalize">
+        <![CDATA[NOT Installed AND NOT REMOVE]]>
+      </Custom>
+    </InstallExecuteSequence>
+    
+    <!-- UI customization -->
+    <Property Id="WIXUI_INSTALLDIR" Value="INSTALLDIR" />
+    <UIRef Id="WixUI_InstallDir" />
+    
+    <!-- Custom license agreement -->
+    <WixVariable Id="WixUILicenseRtf" Value="..\LICENSE" />
+    
+    <!-- Installation success message -->
+    <WixVariable Id="WixUIDialogBmp" Value="installer_banner.bmp" />
+    <WixVariable Id="WixUIBannerBmp" Value="installer_header.bmp" />
   </Fragment>
 </Wix>
