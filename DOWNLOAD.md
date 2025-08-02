@@ -9,6 +9,8 @@
 3. Run the installer as Administrator
 4. Follow the installation wizard
 
+> **Note**: MSI installers are automatically built and published for each release using GitHub Actions.
+
 ## System Requirements
 - Windows 10 or Windows 11 (64-bit only)
 - USB audio interface

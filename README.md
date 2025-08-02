@@ -16,6 +16,8 @@ ASIO4KRNL is an audio driver that reduces latency and improves performance for m
 ### Quick Download
 **[📥 Download ASIO4KRNL](DOWNLOAD.md)** - Get the pre-built installer (recommended for most users)
 
+*Installers are automatically built and published to [Releases](../../releases) for each version.*
+
 ### System Requirements
 - Windows 10 or Windows 11 (64-bit)
 - USB audio interface
