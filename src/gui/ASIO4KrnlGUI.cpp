@@ -210,7 +210,9 @@ void AddTooltip(HWND hwnd, HWND control, const wchar_t* text);
 void ShowWizardIfRequested(const wchar_t* cmdLine, HWND owner);
 void CheckDevices(HWND hwnd);
 void ResizeControls(HWND hwnd);
+void PopulateControls(HWND hwnd);
 void ShowAdvancedSettings(HWND owner);
+void ShowAboutDialog(HWND owner);
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                       _In_opt_ HINSTANCE hPrevInstance,
@@ -390,6 +392,208 @@ void ShowAdvancedSettings(HWND owner)
                L"Advanced Settings", MB_ICONINFORMATION | MB_OK);
 }
 
+// About dialog window procedure
+LRESULT CALLBACK AboutWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+    switch (msg) {
+    case WM_CTLCOLORSTATIC:
+        {
+            HDC hdc = (HDC)wParam;
+            SetTextColor(hdc, g_state.textColor);
+            SetBkColor(hdc, g_state.bgColor);
+            SetBkMode(hdc, TRANSPARENT);
+            return (LRESULT)g_state.hBrushBg;
+        }
+    case WM_ERASEBKGND:
+        {
+            HDC hdc = (HDC)wParam;
+            RECT rect;
+            GetClientRect(hWnd, &rect);
+            FillRect(hdc, &rect, g_state.hBrushBg);
+            return 1;
+        }
+    case WM_COMMAND:
+        if (LOWORD(wParam) == IDOK) {
+            PostMessage(hWnd, WM_CLOSE, 0, 0);
+            return 0;
+        }
+        break;
+    case WM_KEYDOWN:
+        if (wParam == VK_ESCAPE || wParam == VK_RETURN) {
+            PostMessage(hWnd, WM_CLOSE, 0, 0);
+            return 0;
+        }
+        break;
+    case WM_CLOSE:
+        DestroyWindow(hWnd);
+        return 0;
+    case WM_DESTROY:
+        PostQuitMessage(0);
+        return 0;
+    }
+    return DefWindowProc(hWnd, msg, wParam, lParam);
+}
+
+void ShowAboutDialog(HWND owner)
+{
+    // Register a window class for the About dialog
+    static bool classRegistered = false;
+    if (!classRegistered) {
+        WNDCLASSEX wc = {0};
+        wc.cbSize = sizeof(WNDCLASSEX);
+        wc.lpfnWndProc = AboutWndProc;
+        wc.hInstance = GetModuleHandle(nullptr);
+        wc.lpszClassName = L"ASIO4KrnlAboutWnd";
+        wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
+        wc.hbrBackground = g_state.hBrushBg;
+        wc.style = CS_HREDRAW | CS_VREDRAW;
+        
+        if (RegisterClassEx(&wc)) {
+            classRegistered = true;
+        }
+    }
+    
+    // Create the About dialog window
+    HWND hAbout = CreateWindowEx(
+        WS_EX_DLGMODALFRAME | WS_EX_TOPMOST,
+        L"ASIO4KrnlAboutWnd",
+        L"About ASIO4Krnl",
+        WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_VISIBLE,
+        0, 0, 520, 480,
+        owner,
+        nullptr,
+        GetModuleHandle(nullptr),
+        nullptr
+    );
+    
+    if (!hAbout) {
+        // Fallback to MessageBox
+        std::wstring aboutText = 
+            L"ASIO4KRNL v" + std::wstring(ASIO4KRNL_VERSION) + L"\n\n"
+            L"Developer: Ghoffret\n\n"
+            L"A minimal KMDF-based audio driver for Windows\n"
+            L"providing ASIO-compatible low-latency audio\n"
+            L"using USB Audio Class devices.\n\n"
+            L"GitHub: github.com/Ghoffret/ASIO4KRNL";
+        
+        MessageBox(owner, aboutText.c_str(), L"About ASIO4Krnl", MB_ICONINFORMATION | MB_OK);
+        return;
+    }
+    
+    // Center the window on the parent
+    RECT parentRect, aboutRect;
+    GetWindowRect(owner, &parentRect);
+    GetWindowRect(hAbout, &aboutRect);
+    int x = parentRect.left + (parentRect.right - parentRect.left - (aboutRect.right - aboutRect.left)) / 2;
+    int y = parentRect.top + (parentRect.bottom - parentRect.top - (aboutRect.bottom - aboutRect.top)) / 2;
+    SetWindowPos(hAbout, HWND_TOPMOST, x, y, 0, 0, SWP_NOSIZE);
+    
+    // Create logo/title at the top with monospace font
+    HFONT hTitleFont = CreateFont(
+        -18,                        // Height
+        0,                          // Width
+        0,                          // Escapement
+        0,                          // Orientation
+        FW_BOLD,                    // Weight
+        FALSE,                      // Italic
+        FALSE,                      // Underline
+        FALSE,                      // Strikeout
+        DEFAULT_CHARSET,            // Charset
+        OUT_DEFAULT_PRECIS,         // Output precision
+        CLIP_DEFAULT_PRECIS,        // Clipping precision
+        DEFAULT_QUALITY,            // Quality
+        FIXED_PITCH | FF_MODERN,    // Pitch and family (monospace)
+        L"Consolas"                 // Font name
+    );
+    
+    HWND hLogo = CreateWindowEx(0, L"STATIC", L"🎵 ASIO4KRNL 🎵",
+        WS_CHILD | WS_VISIBLE | SS_CENTER,
+        60, 20, 400, 40,
+        hAbout, nullptr, GetModuleHandle(nullptr), nullptr);
+    
+    // Create monospace font for main text
+    HFONT hMonoFont = CreateFont(
+        -13,                        // Height
+        0,                          // Width
+        0,                          // Escapement
+        0,                          // Orientation
+        FW_NORMAL,                  // Weight
+        FALSE,                      // Italic
+        FALSE,                      // Underline
+        FALSE,                      // Strikeout
+        DEFAULT_CHARSET,            // Charset
+        OUT_DEFAULT_PRECIS,         // Output precision
+        CLIP_DEFAULT_PRECIS,        // Clipping precision
+        DEFAULT_QUALITY,            // Quality
+        FIXED_PITCH | FF_MODERN,    // Pitch and family (monospace)
+        L"Consolas"                 // Font name (fallback to Courier New if not available)
+    );
+    
+    // Main about text content
+    std::wstring aboutText = 
+        L"ASIO4KRNL v" + std::wstring(ASIO4KRNL_VERSION) + L"\n\n"
+        L"Developer: Ghoffret\n\n"
+        L"A minimal KMDF-based audio driver for Windows\n"
+        L"providing ASIO-compatible low-latency audio\n"
+        L"using USB Audio Class devices.\n\n"
+        L"Built with enhanced GUI features:\n"
+        L"• Modern design with theme support\n"
+        L"• Improved settings validation\n" 
+        L"• Responsive window layout\n"
+        L"• Enhanced error handling\n\n"
+        L"This project was made with the help of CODEX.\n\n"
+        L"Repository:\n"
+        L"github.com/Ghoffret/ASIO4KRNL\n\n"
+        L"License: See LICENSE file\n"
+        L"© 2024 Ghoffret";
+    
+    HWND hText = CreateWindowEx(0, L"STATIC", aboutText.c_str(),
+        WS_CHILD | WS_VISIBLE | SS_LEFT,
+        40, 80, 440, 320,
+        hAbout, nullptr, GetModuleHandle(nullptr), nullptr);
+    
+    // Apply fonts
+    if (hTitleFont) {
+        SendMessage(hLogo, WM_SETFONT, (WPARAM)hTitleFont, TRUE);
+    }
+    if (hMonoFont) {
+        SendMessage(hText, WM_SETFONT, (WPARAM)hMonoFont, TRUE);
+    }
+    
+    // Create OK button
+    HWND hOK = CreateWindowEx(0, L"BUTTON", L"OK",
+        WS_CHILD | WS_VISIBLE | BS_DEFPUSHBUTTON,
+        210, 420, 100, 32,
+        hAbout, (HMENU)IDOK, GetModuleHandle(nullptr), nullptr);
+    
+    // Force immediate repaint to apply theme
+    InvalidateRect(hAbout, nullptr, TRUE);
+    UpdateWindow(hAbout);
+    
+    // Make it modal by disabling the parent window
+    EnableWindow(owner, FALSE);
+    
+    // Message loop for the modal dialog
+    MSG msg;
+    while (GetMessage(&msg, nullptr, 0, 0)) {
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
+        
+        // Check if our About window is still alive
+        if (!IsWindow(hAbout)) {
+            break;
+        }
+    }
+    
+    // Cleanup
+    EnableWindow(owner, TRUE);
+    SetForegroundWindow(owner);
+    
+    // Clean up fonts
+    if (hTitleFont) DeleteObject(hTitleFont);
+    if (hMonoFont) DeleteObject(hMonoFont);
+}
+
 void ResizeControls(HWND hwnd)
 {
     RECT clientRect;
@@ -421,6 +625,8 @@ void ResizeControls(HWND hwnd)
                      fullWidth - controlSpacing * 2, 70, SWP_NOZORDER);
     }
 }
+
+void PopulateControls(HWND hwnd)
 {
     RECT clientRect;
     GetClientRect(hwnd, &clientRect);
@@ -549,6 +755,12 @@ void ResizeControls(HWND hwnd)
                    margin + controlSpacing + 150 + buttonWidth + buttonSpacing, buttonY,
                    buttonWidth, controlHeight, hwnd, (HMENU)IDC_THEME_TOGGLE, nullptr, nullptr);
 
+    // About button
+    CreateWindowEx(0, WC_BUTTON, L"About",
+                   WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
+                   margin + controlSpacing + 150 + (buttonWidth + buttonSpacing) * 2, buttonY,
+                   buttonWidth, controlHeight, hwnd, (HMENU)IDC_ABOUT, nullptr, nullptr);
+
     // Restore defaults button
     CreateWindowEx(0, WC_BUTTON, L"Restore Defaults",
                    WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
@@ -567,6 +779,7 @@ void ResizeControls(HWND hwnd)
     AddTooltip(hwnd, g_state.hwndStatus, L"Real-time driver status and performance information");
     AddTooltip(hwnd, g_state.hwndTestButton, L"Test current audio settings without applying them permanently");
     AddTooltip(hwnd, g_state.hwndThemeToggle, L"Switch between light and dark visual themes");
+    AddTooltip(hwnd, GetDlgItem(hwnd, IDC_ABOUT), L"Show application information and developer details");
     AddTooltip(hwnd, GetDlgItem(hwnd, IDC_RESTORE_DEFAULTS), L"Reset all settings to recommended default values");
 }
 
@@ -630,6 +843,11 @@ LRESULT CALLBACK MainWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
         case IDC_ADVANCED_SETTINGS:
             if (HIWORD(wParam) == BN_CLICKED) {
                 ShowAdvancedSettings(hWnd);
+            }
+            break;
+        case IDC_ABOUT:
+            if (HIWORD(wParam) == BN_CLICKED) {
+                ShowAboutDialog(hWnd);
             }
             break;
         case IDM_TRAY_OPEN:

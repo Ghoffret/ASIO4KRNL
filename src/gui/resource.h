@@ -11,6 +11,7 @@
 #define IDC_TEST_SETTINGS      107
 #define IDC_THEME_TOGGLE       108
 #define IDC_ADVANCED_SETTINGS  109
+#define IDC_ABOUT              110
 
 // Menu IDs
 #define IDM_TRAY_OPEN          2001
